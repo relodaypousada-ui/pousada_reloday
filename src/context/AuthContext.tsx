@@ -8,7 +8,8 @@ import React, {
 import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { showSuccess, showError } from "@/utils/toast";
-import { Profile, useMyProfile } from "@/integrations/supabase/profiles"; // Importando Profile e useMyProfile
+import { Profile, useMyProfile } from "@/integrations/supabase/profiles";
+import { useQueryClient } from "@tanstack/react-query"; // Importar useQueryClient
 
 // Tipagem para o contexto de autenticação
 interface AuthContextType {
@@ -29,6 +30,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const queryClient = useQueryClient(); // Inicializar queryClient
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -53,13 +55,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setIsLoadingAuth(false);
+        
+        // Invalida o cache do perfil em qualquer mudança de estado de autenticação
+        if (newSession?.user) {
+            queryClient.invalidateQueries({ queryKey: ["myProfile", newSession.user.id] });
+        } else {
+            queryClient.removeQueries({ queryKey: ["myProfile"] });
+        }
       },
     );
 
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]); // Adicionar queryClient como dependência
 
   // Função de Login
   const signIn = async (email: string, password: string) => {
@@ -74,6 +83,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       showError(`Erro ao fazer login: ${error.message}`);
       throw error;
     }
+    
+    // Forçar refetch do perfil imediatamente após o login bem-sucedido
+    queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+    
     showSuccess("Login realizado com sucesso!");
   };
 
@@ -90,6 +103,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       showError(`Erro ao criar conta: ${error.message}`);
       throw error;
     }
+    
+    // Forçar refetch do perfil (embora o usuário precise confirmar email, isso garante consistência)
+    queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+
     showSuccess("Conta criada com sucesso! Verifique seu email para confirmar.");
   };
 
@@ -103,6 +120,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     showSuccess("Você saiu da sua conta.");
     setSession(null);
     setUser(null);
+    // Remover o perfil do cache após o logout
+    queryClient.removeQueries({ queryKey: ["myProfile"] });
   };
 
   const value = {
