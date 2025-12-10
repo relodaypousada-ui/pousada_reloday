@@ -114,8 +114,13 @@ const updateSlide = async ({ id, updates }: UpdateSlideArgs): Promise<Slide> => 
     .single();
 
   if (error) {
-    console.error("Erro ao atualizar slide:", error);
-    throw new Error(`Falha ao atualizar slide: ${error.message}`);
+    // Adicionando log detalhado para depuração
+    console.error(`Erro ao atualizar slide ID ${id}:`, error);
+    
+    // Se o erro for PGRST116 (No rows found), significa que o ID não existe ou RLS bloqueou.
+    // Se for o erro de coerção, significa que mais de uma linha foi retornada (o que não deveria ocorrer com .eq('id', id)).
+    // Mantemos o erro genérico para o usuário, mas o log ajuda na depuração.
+    throw new Error(`Falha ao atualizar slide: ${error.message}. Verifique se o slide existe.`);
   }
   return data as Slide;
 };
