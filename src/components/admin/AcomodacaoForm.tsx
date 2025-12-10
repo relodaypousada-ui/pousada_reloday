@@ -21,7 +21,9 @@ import { Acomodacao, AcomodacaoInsert, useCreateAcomodacao, useUpdateAcomodacao 
 // Schema de Validação
 const formSchema = z.object({
   titulo: z.string().min(3, "O título é obrigatório."),
-  slug: z.string().min(3, "O slug é obrigatório e deve ser único."),
+  slug: z.string()
+    .min(3, "O slug é obrigatório e deve ser único.")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "O slug deve conter apenas letras minúsculas, números e hífens (ex: suite-master-luxo)."),
   descricao: z.string().optional(),
   capacidade: z.coerce.number().min(1, "A capacidade deve ser no mínimo 1."),
   preco: z.coerce.number().min(0.01, "O preço deve ser maior que zero."),
