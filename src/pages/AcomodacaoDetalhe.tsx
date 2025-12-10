@@ -135,7 +135,7 @@ const AcomodacaoDetalhe: React.FC = () => {
                 </div>
             </div>
 
-            <Link to="/reserva">
+            <Link to={`/reserva?acomodacao_slug=${acomodacao.slug}`}>
               <Button size="lg" className="w-full">
                 Confirmar Reserva
               </Button>

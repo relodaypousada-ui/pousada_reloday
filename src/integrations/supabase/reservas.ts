@@ -24,6 +24,7 @@ export interface Reserva {
   };
 }
 
+export type ReservaInsert = Omit<Reserva, 'id' | 'created_at' | 'status' | 'acomodacoes' | 'profiles'>;
 export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'total_hospedes' | 'valor_total'>>;
 
 // --- Query Hooks ---
@@ -56,6 +57,43 @@ export const useAdminReservas = () => {
 };
 
 // --- Mutation Hooks ---
+
+// 1. Criar Reserva (Cliente)
+const createReserva = async (newReserva: ReservaInsert): Promise<Reserva> => {
+    // O status inicial é 'pendente' por padrão no banco de dados
+    const { data, error } = await supabase
+        .from("reservas")
+        .insert(newReserva)
+        .select(`
+            *,
+            acomodacoes (titulo, slug),
+            profiles (full_name)
+        `)
+        .single();
+
+    if (error) {
+        console.error("Erro ao criar reserva:", error);
+        throw new Error(`Falha ao criar reserva: ${error.message}`);
+    }
+    return data as Reserva;
+};
+
+export const useCreateReserva = () => {
+    const queryClient = useQueryClient();
+    return useMutation<Reserva, Error, ReservaInsert>({
+        mutationFn: createReserva,
+        onSuccess: (newReserva) => {
+            // Invalida o cache de reservas do admin e do usuário (se implementado)
+            queryClient.invalidateQueries({ queryKey: ["reservas", "admin"] });
+            queryClient.invalidateQueries({ queryKey: ["myReservas", newReserva.user_id] });
+            showSuccess("Reserva solicitada com sucesso! Aguardando confirmação.");
+        },
+        onError: (error) => {
+            showError(error.message);
+        }
+    });
+};
+
 
 interface UpdateReservaArgs {
     id: string;
