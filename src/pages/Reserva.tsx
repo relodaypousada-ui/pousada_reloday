@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar as CalendarIcon, Loader2, Users, Home, DollarSign, LogIn } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Users, Home, DollarSign, LogIn, ShieldAlert } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ const isDateBlocked = (date: Date, blockedRanges: DateRange[]): boolean => {
 
 
 const Reserva: React.FC = () => {
-  const { user, isLoading: isLoadingAuth } = useAuth();
+  const { user, isAdmin, isLoading: isLoadingAuth } = useAuth(); // Adicionado isAdmin
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const acomodacaoSlug = searchParams.get('acomodacao_slug');
@@ -112,6 +112,11 @@ const Reserva: React.FC = () => {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (isAdmin) {
+        showError("Administradores não podem criar reservas através desta interface.");
+        return;
+    }
+    
     if (!user) {
         showError("Você precisa estar logado para fazer uma reserva.");
         navigate("/login");
@@ -169,7 +174,7 @@ const Reserva: React.FC = () => {
   }
   
   const isPending = isLoadingAuth || isLoadingAcomodacoes || createReservaMutation.isPending || isLoadingBlockedDates;
-  const isSubmitDisabled = isPending || valorTotal <= 0 || !form.formState.isValid || !user;
+  const isSubmitDisabled = isPending || valorTotal <= 0 || !form.formState.isValid || !user || isAdmin; // Desabilita se for admin
   
   // Função para desabilitar datas no calendário
   const disabledDates = (date: Date) => {
@@ -197,7 +202,7 @@ const Reserva: React.FC = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center"><Home className="h-4 w-4 mr-2" /> Acomodação Desejada</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || !acomodacoes}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || !acomodacoes || isAdmin}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={isLoadingAcomodacoes ? "Carregando acomodações..." : "Selecione uma acomodação"} />
@@ -233,7 +238,7 @@ const Reserva: React.FC = () => {
                                 "w-full justify-start text-left font-normal",
                                 !field.value && "text-muted-foreground"
                               )}
-                              disabled={isPending || !selectedAcomodacaoId}
+                              disabled={isPending || !selectedAcomodacaoId || isAdmin}
                             >
                               {field.value ? (
                                 format(field.value, "PPP", { locale: ptBR })
@@ -274,7 +279,7 @@ const Reserva: React.FC = () => {
                                 "w-full justify-start text-left font-normal",
                                 !field.value && "text-muted-foreground"
                               )}
-                              disabled={isPending || !checkInDate}
+                              disabled={isPending || !checkInDate || isAdmin}
                             >
                               {field.value ? (
                                 format(field.value, "PPP", { locale: ptBR })
@@ -325,7 +330,7 @@ const Reserva: React.FC = () => {
                         max={selectedAcomodacao?.capacidade || 10}
                         {...field} 
                         onChange={e => field.onChange(e.target.valueAsNumber)}
-                        disabled={isPending}
+                        disabled={isPending || isAdmin}
                       />
                     </FormControl>
                     {selectedAcomodacao && (
@@ -357,8 +362,18 @@ const Reserva: React.FC = () => {
                   </div>
               </Card>
 
-              {/* 5. Botão de Submissão e Aviso de Login */}
-              {!user && (
+              {/* 5. Aviso de Admin ou Login */}
+              {isAdmin ? (
+                  <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-center text-yellow-800">
+                      <p className="font-semibold flex items-center justify-center">
+                          <ShieldAlert className="h-5 w-5 mr-2" />
+                          Acesso Administrativo
+                      </p>
+                      <p className="text-sm mt-1">
+                          Você está logado como administrador. Não é permitido criar reservas através desta interface.
+                      </p>
+                  </div>
+              ) : !user ? (
                   <div className="p-4 bg-red-100 border border-red-300 rounded-lg text-center text-red-700">
                       <p className="font-semibold flex items-center justify-center">
                           <LogIn className="h-5 w-5 mr-2" />
@@ -376,7 +391,7 @@ const Reserva: React.FC = () => {
                           Ir para Login
                       </Button>
                   </div>
-              )}
+              ) : null}
               
               <Button 
                 type="submit" 
