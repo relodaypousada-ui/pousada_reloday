@@ -9,7 +9,15 @@ interface AdminRouteProps {
 }
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, isAdmin, isLoading, profile } = useAuth();
+
+  // Log de depuração para entender o fluxo de carregamento
+  console.log("AdminRoute Check:", { 
+    isLoading, 
+    user: user ? user.id : 'null', 
+    isAdmin, 
+    profileStatus: profile ? 'Loaded' : 'Loading/Null' 
+  });
 
   if (isLoading) {
     // Exibe um spinner enquanto o estado de autenticação e o perfil estão sendo carregados
