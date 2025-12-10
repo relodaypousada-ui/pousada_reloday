@@ -3,16 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Slide {
-  id: string;
-  image: string;
-  titulo: string;
-  subtitulo: string;
-  ctaLabel: string;
-  ctaHref: string;
-  alt: string;
-}
+import { Slide } from "@/integrations/supabase/slides"; // Importando a tipagem correta
 
 interface HeroCarouselProps {
   slides: Slide[];
@@ -29,6 +20,8 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides = [] }) => {
   };
 
   useEffect(() => {
+    if (slides.length === 0) return;
+
     // Autoplay simples (5s)
     resetTimeout();
     timeoutRef.current = setTimeout(() => {
@@ -51,7 +44,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides = [] }) => {
   if (!slides || slides.length === 0) {
     return (
       <div className="w-full h-[60vh] bg-gray-200 flex items-center justify-center">
-        <p className="text-gray-600">Sem slides configurados. Adicione imagens no painel admin.</p>
+        <p className="text-gray-600">Nenhum slide disponível.</p>
       </div>
     );
   }
@@ -71,7 +64,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides = [] }) => {
             {/* Imagem com lazy loading */}
             <img
               src={s.image}
-              alt={s.alt || s.titulo}
+              alt={s.titulo}
               className="w-full h-full object-cover"
               loading="lazy"
             />

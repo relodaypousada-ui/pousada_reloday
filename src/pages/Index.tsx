@@ -2,31 +2,11 @@ import React from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import AcomodacaoCard from "@/components/AcomodacaoCard";
 import { Button } from "@/components/ui/button";
-import { Utensils, Wifi, Sun, MapPin } from "lucide-react";
+import { Utensils, Wifi, Sun, MapPin, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSlides } from "@/integrations/supabase/slides"; // Importando o hook
 
-// --- Dados Mockados para Demonstração ---
-
-const mockSlides = [
-  {
-    id: "s1",
-    image: "https://via.placeholder.com/1920x1080/4682B4/FFFFFF?text=Vista+Panor%C3%A2mica",
-    titulo: "Pousada Reloday: Seu Refúgio de Paz",
-    subtitulo: "Descubra o conforto e a tranquilidade em meio à natureza.",
-    ctaLabel: "Ver Acomodações",
-    ctaHref: "/acomodacoes",
-    alt: "Vista panorâmica da pousada",
-  },
-  {
-    id: "s2",
-    image: "https://via.placeholder.com/1920x1080/20B2AA/FFFFFF?text=Piscina+e+%C3%81rea+de+Lazer",
-    titulo: "Relaxe em Nossa Piscina Exclusiva",
-    subtitulo: "Momentos inesquecíveis sob o sol.",
-    ctaLabel: "Reservar Agora",
-    ctaHref: "/reserva",
-    alt: "Piscina da pousada",
-  },
-];
+// --- Dados Mockados para Demonstração (Acomodações e Serviços mantidos por enquanto) ---
 
 const mockAcomodacoes = [
   {
@@ -68,10 +48,33 @@ const mockServicos = [
 // --- Componente Principal ---
 
 const Index: React.FC = () => {
+  const { data: slides, isLoading: isLoadingSlides, isError: isErrorSlides } = useSlides();
+
+  const renderHero = () => {
+    if (isLoadingSlides) {
+      return (
+        <div className="w-full h-[60vh] md:h-[70vh] bg-gray-100 flex items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (isErrorSlides || !slides || slides.length === 0) {
+      // Fallback visual se houver erro ou nenhum slide
+      return (
+        <div className="w-full h-[60vh] md:h-[70vh] bg-red-50 flex items-center justify-center">
+          <p className="text-red-600">Erro ao carregar o carrossel. Verifique a conexão com o Supabase e a tabela 'slides'.</p>
+        </div>
+      );
+    }
+
+    return <HeroCarousel slides={slides} />;
+  };
+
   return (
     <div className="w-full">
       {/* 1. Hero Carousel */}
-      <HeroCarousel slides={mockSlides} />
+      {renderHero()}
 
       {/* 2. Chamada para Ação de Reserva */}
       <section className="bg-secondary py-12">
