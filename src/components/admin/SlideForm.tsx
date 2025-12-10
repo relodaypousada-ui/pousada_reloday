@@ -201,7 +201,7 @@ const SlideForm: React.FC<SlideFormProps> = ({ initialData, onSuccess }) => {
                         <ImageIcon className="h-3 w-3 mr-1" /> Imagem atual: {field.value.substring(0, 50)}...
                     </div>
                 ) : (
-                    "Insira uma URL ou faça upload de uma imagem (webp, jpg, png)."
+                    "Insira uma URL ou faça upload de uma imagem. Recomendado: 1920x800 pixels (proporção 2.4:1)."
                 )}
               </FormDescription>
               <FormMessage />
