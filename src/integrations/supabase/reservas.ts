@@ -27,6 +27,12 @@ export interface Reserva {
 export type ReservaInsert = Omit<Reserva, 'id' | 'created_at' | 'status' | 'acomodacoes' | 'profiles'>;
 export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'total_hospedes' | 'valor_total'>>;
 
+// New type for date ranges
+export interface DateRange {
+  start: string; // check_in_date
+  end: string;   // check_out_date
+}
+
 // --- Query Hooks ---
 
 // Função para buscar todas as reservas (Admin)
@@ -56,6 +62,34 @@ export const useAdminReservas = () => {
   });
 };
 
+// Função para buscar datas bloqueadas para uma acomodação específica
+const getBlockedDates = async (acomodacaoId: string): Promise<DateRange[]> => {
+  const { data, error } = await supabase
+    .from("reservas")
+    .select("check_in_date, check_out_date")
+    .eq("acomodacao_id", acomodacaoId)
+    .in("status", ["confirmada", "pendente"]); // Apenas reservas confirmadas ou pendentes bloqueiam datas
+
+  if (error) {
+    console.error(`Erro ao buscar datas bloqueadas para acomodação ${acomodacaoId}:`, error);
+    throw new Error("Não foi possível carregar a disponibilidade de datas.");
+  }
+
+  return data.map(item => ({
+      start: item.check_in_date,
+      end: item.check_out_date,
+  })) as DateRange[];
+};
+
+export const useBlockedDates = (acomodacaoId: string | undefined) => {
+  return useQuery<DateRange[], Error>({
+    queryKey: ["blockedDates", acomodacaoId],
+    queryFn: () => getBlockedDates(acomodacaoId!),
+    enabled: !!acomodacaoId,
+  });
+};
+
+
 // --- Mutation Hooks ---
 
 // 1. Criar Reserva (Cliente)
@@ -83,9 +117,10 @@ export const useCreateReserva = () => {
     return useMutation<Reserva, Error, ReservaInsert>({
         mutationFn: createReserva,
         onSuccess: (newReserva) => {
-            // Invalida o cache de reservas do admin e do usuário (se implementado)
+            // Invalida o cache de reservas do admin e do usuário (e datas bloqueadas)
             queryClient.invalidateQueries({ queryKey: ["reservas", "admin"] });
             queryClient.invalidateQueries({ queryKey: ["myReservas", newReserva.user_id] });
+            queryClient.invalidateQueries({ queryKey: ["blockedDates", newReserva.acomodacao_id] });
             showSuccess("Reserva solicitada com sucesso! Aguardando confirmação.");
         },
         onError: (error) => {
@@ -125,8 +160,8 @@ export const useUpdateReserva = () => {
     mutationFn: updateReserva,
     onSuccess: (updatedReserva) => {
       queryClient.invalidateQueries({ queryKey: ["reservas", "admin"] });
-      // Invalida também as reservas do usuário específico, se necessário
       queryClient.invalidateQueries({ queryKey: ["myReservas", updatedReserva.user_id] });
+      queryClient.invalidateQueries({ queryKey: ["blockedDates", updatedReserva.acomodacao_id] });
       showSuccess("Reserva atualizada com sucesso!");
     },
     onError: (error) => {

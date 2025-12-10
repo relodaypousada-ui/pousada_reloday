@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, isBefore, startOfDay, isWithinInterval, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,14 +16,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar as CalendarIcon, Loader2, Users, Home, DollarSign } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Users, Home, DollarSign, LogIn } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useAllAcomodacoes } from "@/integrations/supabase/acomodacoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ReservaInsert, useCreateReserva } from "@/integrations/supabase/reservas";
+import { ReservaInsert, useCreateReserva, useBlockedDates, DateRange } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
 
 // Schema de Validação
@@ -40,6 +40,28 @@ const formSchema = z.object({
     message: "O Check-out deve ser pelo menos 1 dia após o Check-in.",
     path: ["check_out_date"],
 });
+
+// Helper function to check if a date is blocked
+const isDateBlocked = (date: Date, blockedRanges: DateRange[]): boolean => {
+    const today = startOfDay(new Date());
+    
+    // 1. Block past dates
+    if (isBefore(date, today)) {
+        return true;
+    }
+
+    // 2. Block dates within existing reservations
+    return blockedRanges.some(range => {
+        const start = parseISO(range.start);
+        const end = parseISO(range.end);
+        
+        // Block the date if it is on or after the check-in date (start)
+        // AND strictly before the check-out date (end).
+        // This ensures the check-out date itself is available for a new check-in.
+        return isWithinInterval(date, { start: start, end: end }) && !isSameDay(date, end);
+    });
+};
+
 
 const Reserva: React.FC = () => {
   const { user, isLoading: isLoadingAuth } = useAuth();
@@ -58,6 +80,17 @@ const Reserva: React.FC = () => {
     },
   });
   
+  // Watchers
+  const selectedAcomodacaoId = form.watch("acomodacao_id");
+  const checkInDate = form.watch("check_in_date");
+  const checkOutDate = form.watch("check_out_date");
+  const totalHospedes = form.watch("total_hospedes");
+
+  const selectedAcomodacao = acomodacoes?.find(a => a.id === selectedAcomodacaoId);
+  
+  // Hook para buscar datas bloqueadas
+  const { data: blockedDates, isLoading: isLoadingBlockedDates } = useBlockedDates(selectedAcomodacaoId);
+
   // Efeito para pré-selecionar a acomodação se o slug estiver na URL
   useEffect(() => {
       if (acomodacaoSlug && acomodacoes && acomodacoes.length > 0) {
@@ -68,12 +101,6 @@ const Reserva: React.FC = () => {
       }
   }, [acomodacaoSlug, acomodacoes, form]);
 
-  const selectedAcomodacaoId = form.watch("acomodacao_id");
-  const checkInDate = form.watch("check_in_date");
-  const checkOutDate = form.watch("check_out_date");
-  const totalHospedes = form.watch("total_hospedes");
-
-  const selectedAcomodacao = acomodacoes?.find(a => a.id === selectedAcomodacaoId);
   
   // Cálculo de Preço e Noites
   const numNights = checkInDate && checkOutDate ? differenceInDays(checkOutDate, checkInDate) : 0;
@@ -100,6 +127,26 @@ const Reserva: React.FC = () => {
         showError(`A capacidade máxima desta acomodação é de ${selectedAcomodacao.capacidade} hóspedes.`);
         return;
     }
+    
+    // Verificação final de datas bloqueadas antes de submeter
+    if (blockedDates) {
+        if (isDateBlocked(values.check_in_date, blockedDates)) {
+            showError("A data de Check-in selecionada está bloqueada.");
+            return;
+        }
+        // Verifica se o intervalo inteiro está livre (exceto o check-out)
+        let currentDate = startOfDay(values.check_in_date);
+        const endDate = startOfDay(values.check_out_date);
+        
+        while (isBefore(currentDate, endDate)) {
+            if (isDateBlocked(currentDate, blockedDates)) {
+                showError("O período selecionado contém datas indisponíveis.");
+                return;
+            }
+            currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // Adiciona 1 dia
+        }
+    }
+
 
     const reservaData: ReservaInsert = {
         user_id: user.id,
@@ -112,13 +159,23 @@ const Reserva: React.FC = () => {
 
     createReservaMutation.mutate(reservaData, {
         onSuccess: () => {
-            form.reset();
+            form.reset({
+                acomodacao_id: selectedAcomodacaoId, // Mantém a acomodação selecionada
+                total_hospedes: 1,
+            });
             navigate("/acompanhar-reserva");
         },
     });
   }
   
-  const isPending = isLoadingAuth || isLoadingAcomodacoes || createReservaMutation.isPending;
+  const isPending = isLoadingAuth || isLoadingAcomodacoes || createReservaMutation.isPending || isLoadingBlockedDates;
+  const isSubmitDisabled = isPending || valorTotal <= 0 || !form.formState.isValid || !user;
+  
+  // Função para desabilitar datas no calendário
+  const disabledDates = (date: Date) => {
+      if (!blockedDates) return false;
+      return isDateBlocked(date, blockedDates);
+  };
 
   return (
     <div className="container py-12 min-h-[60vh] flex justify-center">
@@ -176,7 +233,7 @@ const Reserva: React.FC = () => {
                                 "w-full justify-start text-left font-normal",
                                 !field.value && "text-muted-foreground"
                               )}
-                              disabled={isPending}
+                              disabled={isPending || !selectedAcomodacaoId}
                             >
                               {field.value ? (
                                 format(field.value, "PPP", { locale: ptBR })
@@ -192,7 +249,7 @@ const Reserva: React.FC = () => {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
+                            disabled={disabledDates} // Aplica datas bloqueadas
                             initialFocus
                             locale={ptBR}
                           />
@@ -217,7 +274,7 @@ const Reserva: React.FC = () => {
                                 "w-full justify-start text-left font-normal",
                                 !field.value && "text-muted-foreground"
                               )}
-                              disabled={isPending}
+                              disabled={isPending || !checkInDate}
                             >
                               {field.value ? (
                                 format(field.value, "PPP", { locale: ptBR })
@@ -233,7 +290,8 @@ const Reserva: React.FC = () => {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date <= (checkInDate || new Date()) || date < new Date("1900-01-01")}
+                            // Desabilita datas antes ou no mesmo dia do check-in, e datas bloqueadas
+                            disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
                             initialFocus
                             locale={ptBR}
                           />
@@ -244,6 +302,13 @@ const Reserva: React.FC = () => {
                   )}
                 />
               </div>
+              
+              {/* Mensagem de Carregamento de Disponibilidade */}
+              {selectedAcomodacaoId && isLoadingBlockedDates && (
+                  <p className="text-sm text-center text-blue-500 flex items-center justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" /> Verificando disponibilidade...
+                  </p>
+              )}
 
               {/* 3. Hóspedes */}
               <FormField
@@ -292,11 +357,31 @@ const Reserva: React.FC = () => {
                   </div>
               </Card>
 
-              {/* 5. Botão de Submissão */}
+              {/* 5. Botão de Submissão e Aviso de Login */}
+              {!user && (
+                  <div className="p-4 bg-red-100 border border-red-300 rounded-lg text-center text-red-700">
+                      <p className="font-semibold flex items-center justify-center">
+                          <LogIn className="h-5 w-5 mr-2" />
+                          Login Necessário
+                      </p>
+                      <p className="text-sm mt-1">
+                          Para **Solicitar Reserva**, você deve estar logado. O valor acima é apenas uma simulação.
+                      </p>
+                      <Button 
+                          type="button" 
+                          variant="destructive" 
+                          className="mt-3 w-full"
+                          onClick={() => navigate("/login")}
+                      >
+                          Ir para Login
+                      </Button>
+                  </div>
+              )}
+              
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isPending || valorTotal <= 0 || !form.formState.isValid}
+                disabled={isSubmitDisabled}
               >
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -305,11 +390,6 @@ const Reserva: React.FC = () => {
                 )}
               </Button>
               
-              {!user && (
-                  <p className="text-center text-sm text-red-500">
-                      Você deve estar logado para solicitar uma reserva.
-                  </p>
-              )}
             </form>
           </Form>
         </CardContent>
