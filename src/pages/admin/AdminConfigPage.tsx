@@ -1,12 +1,99 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings } from "lucide-react";
+import { Settings, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useGlobalConfig, useUpdateGlobalConfig, ConfiguracoesUpdate } from "@/integrations/supabase/configuracoes";
+import { showError } from "@/utils/toast";
+
+// Schema de Validação
+const configSchema = z.object({
+  email_contato: z.string().email("Email inválido.").optional().or(z.literal("")),
+  telefone_principal: z.string().optional().or(z.literal("")),
+  endereco_fisico: z.string().optional().or(z.literal("")),
+  titulo_site: z.string().min(1, "O título é obrigatório.").optional().or(z.literal("")),
+  meta_descricao: z.string().optional().or(z.literal("")),
+});
+
+type ConfigFormValues = z.infer<typeof configSchema>;
 
 const AdminConfigPage: React.FC = () => {
+  const { data: config, isLoading: isLoadingConfig, isError: isErrorConfig } = useGlobalConfig();
+  const updateMutation = useUpdateGlobalConfig();
+  
+  const form = useForm<ConfigFormValues>({
+    resolver: zodResolver(configSchema),
+    defaultValues: {
+      email_contato: "",
+      telefone_principal: "",
+      endereco_fisico: "",
+      titulo_site: "",
+      meta_descricao: "",
+    },
+    mode: "onChange",
+  });
+
+  // Sincroniza os dados carregados com o formulário
+  useEffect(() => {
+    if (config) {
+      form.reset({
+        email_contato: config.email_contato || "",
+        telefone_principal: config.telefone_principal || "",
+        endereco_fisico: config.endereco_fisico || "",
+        titulo_site: config.titulo_site || "",
+        meta_descricao: config.meta_descricao || "",
+      });
+    }
+  }, [config, form]);
+
+  const onSubmitContato = (values: ConfigFormValues) => {
+    const updates: ConfiguracoesUpdate = {
+      email_contato: values.email_contato || null,
+      telefone_principal: values.telefone_principal || null,
+      endereco_fisico: values.endereco_fisico || null,
+    };
+    updateMutation.mutate(updates);
+  };
+
+  const onSubmitSEO = (values: ConfigFormValues) => {
+    const updates: ConfiguracoesUpdate = {
+      titulo_site: values.titulo_site || null,
+      meta_descricao: values.meta_descricao || null,
+    };
+    updateMutation.mutate(updates);
+  };
+
+  if (isLoadingConfig) {
+    return (
+      <div className="w-full py-12 flex justify-center items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Carregando configurações...</p>
+      </div>
+    );
+  }
+  
+  if (isErrorConfig) {
+      showError("Erro ao carregar configurações. Verifique a conexão e permissões.");
+      return (
+        <div className="w-full py-12 text-center text-destructive">
+            Erro ao carregar configurações.
+        </div>
+      );
+  }
+
   return (
     <div className="w-full">
       <h1 className="text-4xl font-bold mb-8 flex items-center">
@@ -17,41 +104,109 @@ const AdminConfigPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Coluna Principal de Configurações */}
         <div className="lg:col-span-2 space-y-8">
+          
+          {/* Formulário de Contato */}
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Informações de Contato</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email-contato">Email de Contato</Label>
-                <Input id="email-contato" placeholder="contato@pousadareloday.com.br" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone Principal</Label>
-                <Input id="telefone" placeholder="(99) 99999-9999" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endereco">Endereço Físico</Label>
-                <Input id="endereco" placeholder="Rua Exemplo, 123, Cidade - UF" />
-              </div>
-              <Button className="mt-4">Salvar Contato</Button>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmitContato)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email_contato"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email de Contato</FormLabel>
+                        <FormControl>
+                          <Input placeholder="contato@pousadareloday.com.br" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="telefone_principal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone Principal</FormLabel>
+                        <FormControl>
+                          <Input placeholder="(99) 99999-9999" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endereco_fisico"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Endereço Físico</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Rua Exemplo, 123, Cidade - UF" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="mt-4" 
+                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                  >
+                    {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Contato"}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
 
+          {/* Formulário de SEO */}
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Configurações de SEO e Títulos</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="titulo-site">Título do Site</Label>
-                <Input id="titulo-site" placeholder="Pousada Reloday - Seu Refúgio" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="meta-descricao">Meta Descrição (SEO)</Label>
-                <Input id="meta-descricao" placeholder="Descrição curta para motores de busca." />
-              </div>
-              <Button className="mt-4">Salvar SEO</Button>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmitSEO)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="titulo_site"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Título do Site</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Pousada Reloday - Seu Refúgio" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="meta_descricao"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Meta Descrição (SEO)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Descrição curta para motores de busca." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="mt-4" 
+                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                  >
+                    {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar SEO"}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </div>
@@ -71,7 +226,11 @@ const AdminConfigPage: React.FC = () => {
                         <Separator />
                         <div className="flex justify-between items-center">
                             <span className="text-sm font-medium">Última Atualização:</span>
-                            <span className="text-muted-foreground text-sm">{new Date().toLocaleDateString('pt-BR')}</span>
+                            <span className="text-muted-foreground text-sm">
+                                {config?.updated_at ? new Date(config.updated_at).toLocaleDateString('pt-BR', {
+                                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                }) : 'N/A'}
+                            </span>
                         </div>
                     </div>
                 </CardContent>
