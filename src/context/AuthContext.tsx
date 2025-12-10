@@ -8,11 +8,14 @@ import React, {
 import { supabase } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { showSuccess, showError } from "@/utils/toast";
+import { Profile, useMyProfile } from "@/integrations/supabase/profiles"; // Importando Profile e useMyProfile
 
 // Tipagem para o contexto de autenticação
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  profile: Profile | null; // Adicionando o perfil
+  isAdmin: boolean; // Adicionando status de administrador
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -28,14 +31,20 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  // Hook para buscar o perfil do usuário logado
+  const { data: profile, isLoading: isLoadingProfile } = useMyProfile(user?.id);
+  
+  const isLoading = isLoadingAuth || isLoadingProfile;
+  const isAdmin = profile?.is_admin ?? false;
 
   useEffect(() => {
     // 1. Carregar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setIsLoading(false);
+      setIsLoadingAuth(false);
     });
 
     // 2. Configurar listener para mudanças de estado de autenticação
@@ -43,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        setIsLoading(false);
+        setIsLoadingAuth(false);
       },
     );
 
@@ -54,12 +63,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Função de Login
   const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
+    setIsLoadingAuth(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    setIsLoading(false);
+    setIsLoadingAuth(false);
 
     if (error) {
       showError(`Erro ao fazer login: ${error.message}`);
@@ -70,12 +79,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Função de Registro
   const signUp = async (email: string, password: string) => {
-    setIsLoading(true);
+    setIsLoadingAuth(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
     });
-    setIsLoading(false);
+    setIsLoadingAuth(false);
 
     if (error) {
       showError(`Erro ao criar conta: ${error.message}`);
@@ -99,6 +108,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = {
     session,
     user,
+    profile,
+    isAdmin,
     isLoading,
     signIn,
     signUp,

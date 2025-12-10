@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
-import AdminLayout from "./components/layout/AdminLayout"; // Importação adicionada
+import AdminLayout from "./components/layout/AdminLayout";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import QuemSomos from "./pages/QuemSomos";
@@ -19,9 +19,10 @@ import CriarPerfil from "./pages/CriarPerfil";
 import Acomodacoes from "./pages/Acomodacoes";
 import AdminDashboard from "./pages/AdminDashboard";
 import RecuperarSenha from "./pages/RecuperarSenha";
-import AdminUsersPage from "./pages/admin/AdminUsersPage"; // Importação adicionada
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminRoute from "./components/auth/AdminRoute"; // Importação adicionada
 
 const queryClient = new QueryClient();
 
@@ -32,9 +33,9 @@ const LayoutWrapper = ({ element }: { element: React.ReactNode }) => (
 
 // Componente Wrapper para aplicar o layout Admin nas rotas
 const AdminLayoutWrapper = ({ element }: { element: React.ReactNode }) => (
-  <ProtectedRoute>
+  <AdminRoute> {/* Usando AdminRoute aqui */}
     <AdminLayout>{element}</AdminLayout>
-  </ProtectedRoute>
+  </AdminRoute>
 );
 
 const App = () => (
@@ -63,7 +64,7 @@ const App = () => (
             {/* Rotas Protegidas (Usuário Comum) */}
             <Route path="/acompanhar-reserva" element={<LayoutWrapper element={<ProtectedRoute><AcompanharReserva /></ProtectedRoute>} />} />
             
-            {/* Rotas Administrativas Protegidas (Usando AdminLayout) */}
+            {/* Rotas Administrativas Protegidas (Usando AdminLayout e AdminRoute) */}
             <Route path="/admin" element={<AdminLayoutWrapper element={<AdminDashboard />} />} />
             <Route path="/admin/clientes" element={<AdminLayoutWrapper element={<AdminUsersPage />} />} />
             
