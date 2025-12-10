@@ -16,6 +16,9 @@ const AcomodacaoCard: React.FC<AcomodacaoCardProps> = ({ acomodacao }) => {
     minimumFractionDigits: 2,
   }).format(acomodacao.preco);
 
+  // Verifica se o slug é válido antes de criar o link de detalhes
+  const isSlugValid = acomodacao.slug && acomodacao.slug.length > 0;
+
   return (
     <article className="bg-card border rounded-xl shadow-lg overflow-hidden transition-transform hover:shadow-xl hover:scale-[1.01] duration-300">
       {/* Imagem */}
@@ -57,11 +60,17 @@ const AcomodacaoCard: React.FC<AcomodacaoCardProps> = ({ acomodacao }) => {
 
         {/* Ações */}
         <div className="mt-6 flex space-x-3">
-          <Link to={`/acomodacoes/${acomodacao.slug}`} className="flex-1">
-            <Button variant="outline" className="w-full">
-              Ver Detalhes
+          {isSlugValid ? (
+            <Link to={`/acomodacoes/${acomodacao.slug}`} className="flex-1">
+              <Button variant="outline" className="w-full">
+                Ver Detalhes
+              </Button>
+            </Link>
+          ) : (
+            <Button variant="outline" className="w-full" disabled>
+                Slug Inválido
             </Button>
-          </Link>
+          )}
           <Link to="/reserva" className="flex-1">
             <Button className="w-full">
               Reservar
