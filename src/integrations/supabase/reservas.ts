@@ -157,7 +157,7 @@ export const useCreateManualBlock = () => {
     });
 };
 
-const deleteManualBlock = async (id: string): Promise<void> => {
+const deleteManualBlock = async (id: string): Promise<string> => {
     const { data, error } = await supabase
         .from("bloqueios_manuais")
         .delete()
@@ -189,13 +189,42 @@ export const useDeleteManualBlock = () => {
     });
 };
 
-// Hook para buscar bloqueios manuais (apenas para o admin)
-export const useManualBlocks = (acomodacaoId: string | undefined) => {
-    return useQuery<BloqueioManual[], Error>({
-        queryKey: ["manualBlocks", acomodacaoId],
-        queryFn: () => getManualBlocks(acomodacaoId!),
-        enabled: !!acomodacaoId,
-    });
+// --- Mutation Hooks (Nova Reserva) ---
+
+const createReserva = async (newReserva: ReservaInsert): Promise<Reserva> => {
+  // Status padrão é 'pendente'
+  const { data, error } = await supabase
+    .from("reservas")
+    .insert({ ...newReserva, status: 'pendente' })
+    .select(`
+      *,
+      acomodacoes (titulo, slug),
+      profiles (full_name)
+    `)
+    .single();
+
+  if (error) {
+    console.error("Erro ao criar reserva:", error);
+    throw new Error(`Falha ao criar reserva: ${error.message}`);
+  }
+  return data as Reserva;
+};
+
+export const useCreateReserva = () => {
+  const queryClient = useQueryClient();
+  return useMutation<Reserva, Error, ReservaInsert>({
+    mutationFn: createReserva,
+    onSuccess: (newReserva) => {
+      // Invalida listas de reservas e datas bloqueadas
+      queryClient.invalidateQueries({ queryKey: ["reservas", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["myReservas", newReserva.user_id] });
+      queryClient.invalidateQueries({ queryKey: ["blockedDates", newReserva.acomodacao_id] });
+      showSuccess("Reserva solicitada com sucesso! Aguardando confirmação.");
+    },
+    onError: (error) => {
+      showError(error.message);
+    }
+  });
 };
 
 
