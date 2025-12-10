@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
-import { Acomodacao, AcomodacaoInsert, useCreateAcomodacao, useUpdateAcomodacao } from "@/integrations/supabase/acomodacoes";
+import { Acomodacao, AcomodacaoInsert, useCreateAcomodacao, useUpdateAcomodacao, useAcomodacao } from "@/integrations/supabase/acomodacoes";
 import { useAllComodidades } from "@/integrations/supabase/comodidades";
 import { cn } from "@/lib/utils";
 import MediaManager from "./MediaManager";
@@ -32,7 +32,7 @@ const formSchema = z.object({
   slug: z.string()
     .min(3, "O slug é obrigatório e deve ser único.")
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "O slug deve conter apenas letras minúsculas, números e hífens (ex: suite-master-luxo)."),
-  descricao: z.string().optional(),
+  descricao: z.string().optional().or(z.literal("")),
   capacidade: z.coerce.number().min(1, "A capacidade deve ser no mínimo 1."),
   preco: z.coerce.number().min(0.01, "O preço deve ser maior que zero."),
   imagem_url: z.string().url("URL de imagem inválida.").optional().or(z.literal("")),
@@ -47,6 +47,14 @@ interface AcomodacaoFormProps {
 
 const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess }) => {
   const isEditing = !!initialData;
+  const acomodacaoId = initialData?.id;
+  
+  // Se estiver editando, buscamos os dados detalhados (incluindo mídia)
+  const { data: fetchedAcomodacao, isLoading: isLoadingAcomodacao } = useAcomodacao(acomodacaoId || "");
+  
+  // Usamos os dados buscados se estivermos editando, caso contrário, usamos initialData (que é undefined para criação)
+  const currentAcomodacao = isEditing ? fetchedAcomodacao : initialData;
+
   const createMutation = useCreateAcomodacao();
   const updateMutation = useUpdateAcomodacao();
   const isPending = createMutation.isPending || updateMutation.isPending;
@@ -56,27 +64,34 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      titulo: initialData?.titulo || "",
-      slug: initialData?.slug || "",
-      descricao: initialData?.descricao || "",
-      capacidade: initialData?.capacidade || 1,
-      preco: initialData?.preco || 0.01,
-      imagem_url: initialData?.imagem_url || "",
-      is_active: initialData?.is_active ?? true,
-      comodidadeIds: initialData?.comodidades?.map(c => c.id) || [],
+      titulo: currentAcomodacao?.titulo || "",
+      slug: currentAcomodacao?.slug || "",
+      descricao: currentAcomodacao?.descricao || "",
+      capacidade: currentAcomodacao?.capacidade || 1,
+      preco: currentAcomodacao?.preco || 0.01,
+      imagem_url: currentAcomodacao?.imagem_url || "",
+      is_active: currentAcomodacao?.is_active ?? true,
+      comodidadeIds: currentAcomodacao?.comodidades?.map(c => c.id) || [],
     },
+    values: { // Usamos 'values' para sincronizar o formulário com os dados do React Query
+        titulo: currentAcomodacao?.titulo || "",
+        slug: currentAcomodacao?.slug || "",
+        descricao: currentAcomodacao?.descricao || "",
+        capacidade: currentAcomodacao?.capacidade || 1,
+        preco: currentAcomodacao?.preco || 0.01,
+        imagem_url: currentAcomodacao?.imagem_url || "",
+        is_active: currentAcomodacao?.is_active ?? true,
+        comodidadeIds: currentAcomodacao?.comodidades?.map(c => c.id) || [],
+    },
+    resetOptions: {
+        keepDirtyValues: true,
+    }
   });
   
   // Define o caminho de upload baseado no slug (ou um placeholder se for criação)
   const currentSlug = form.watch('slug');
   const uploadPath = useMemo(() => `acomodacoes/${currentSlug || 'temp'}`, [currentSlug]);
   const { uploadFile, isUploading } = useStorageUpload(uploadPath);
-
-  useEffect(() => {
-    if (initialData && initialData.comodidades) {
-        form.setValue("comodidadeIds", initialData.comodidades.map(c => c.id), { shouldDirty: false });
-    }
-  }, [initialData, form]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -110,6 +125,15 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
         onSuccess: onSuccess,
       });
     }
+  }
+  
+  if (isEditing && isLoadingAcomodacao) {
+      return (
+        <div className="flex justify-center items-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-3 text-muted-foreground">Carregando detalhes da acomodação...</p>
+        </div>
+      );
   }
 
   return (
@@ -296,10 +320,10 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
         <Separator />
         
         {/* Gerenciador de Mídias Adicionais (Apenas em Edição) */}
-        {isEditing && initialData && (
+        {isEditing && currentAcomodacao && acomodacaoId && (
             <MediaManager 
-                acomodacaoId={initialData.id} 
-                initialMedia={initialData.midia || []} 
+                acomodacaoId={acomodacaoId} 
+                initialMedia={currentAcomodacao.midia || []} 
             />
         )}
         
