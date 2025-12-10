@@ -16,7 +16,10 @@ import AcompanharReserva from "./pages/AcompanharReserva";
 import Login from "./pages/Login";
 import CriarPerfil from "./pages/CriarPerfil";
 import Acomodacoes from "./pages/Acomodacoes";
-import { AuthProvider } from "./context/AuthContext"; // Importação adicionada
+import AdminDashboard from "./pages/AdminDashboard"; // Importação adicionada
+import RecuperarSenha from "./pages/RecuperarSenha"; // Importação adicionada
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute"; // Importação adicionada
 
 const queryClient = new QueryClient();
 
@@ -31,7 +34,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider> {/* AuthProvider envolve as rotas */}
+        <AuthProvider>
           <Routes>
             <Route path="/" element={<LayoutWrapper element={<Index />} />} />
             <Route path="/quem-somos" element={<LayoutWrapper element={<QuemSomos />} />} />
@@ -44,6 +47,13 @@ const App = () => (
             <Route path="/acompanhar-reserva" element={<LayoutWrapper element={<AcompanharReserva />} />} />
             <Route path="/login" element={<LayoutWrapper element={<Login />} />} />
             <Route path="/criar-perfil" element={<LayoutWrapper element={<CriarPerfil />} />} />
+            <Route path="/recuperar-senha" element={<LayoutWrapper element={<RecuperarSenha />} />} />
+            
+            {/* Rota Administrativa Protegida */}
+            <Route 
+              path="/admin" 
+              element={<LayoutWrapper element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />} 
+            />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

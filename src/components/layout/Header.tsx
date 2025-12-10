@@ -1,10 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, Hotel, LogOut, User as UserIcon } from "lucide-react";
+import { Menu, Hotel, LogOut, User as UserIcon, LayoutDashboard } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
-import { useAuth } from "@/context/AuthContext"; // Importação adicionada
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { name: "Home", href: "/" },
@@ -17,7 +17,7 @@ const navItems = [
 
 const Header: React.FC = () => {
   const isMobile = useIsMobile();
-  const { user, signOut } = useAuth(); // Usando o hook de autenticação
+  const { user, signOut } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
@@ -40,11 +40,19 @@ const Header: React.FC = () => {
   const AuthButton = () => {
     if (user) {
       return (
-        <Link to="/acompanhar-reserva">
-          <Button variant="ghost" size="icon" aria-label="Perfil">
-            <UserIcon className="h-5 w-5" />
-          </Button>
-        </Link>
+        <>
+          {/* Link para o Painel Admin (visível apenas se logado) */}
+          <Link to="/admin">
+            <Button variant="ghost" size="icon" aria-label="Painel Admin" className="hidden lg:inline-flex">
+              <LayoutDashboard className="h-5 w-5" />
+            </Button>
+          </Link>
+          <Link to="/acompanhar-reserva">
+            <Button variant="ghost" size="icon" aria-label="Perfil">
+              <UserIcon className="h-5 w-5" />
+            </Button>
+          </Link>
+        </>
       );
     }
     return (
@@ -98,6 +106,11 @@ const Header: React.FC = () => {
                   
                   {user ? (
                     <>
+                      <SheetClose asChild>
+                        <Link to="/admin" className="text-lg font-medium hover:text-primary flex items-center">
+                          <LayoutDashboard className="h-5 w-5 mr-2" /> Painel Admin
+                        </Link>
+                      </SheetClose>
                       <SheetClose asChild>
                         <Link to="/acompanhar-reserva" className="text-lg font-medium hover:text-primary flex items-center">
                           <UserIcon className="h-5 w-5 mr-2" /> Meu Perfil
