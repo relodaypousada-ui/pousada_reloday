@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { AcomodacaoMidia } from "@/integrations/supabase/acomodacoes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Image, Video, PlusCircle, Trash2, Loader2, GripVertical } from "lucide-react";
+import { Image, Video, PlusCircle, Trash2, Loader2, GripVertical, Upload } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useStorageUpload } from "@/hooks/useStorageUpload";
 
 interface MediaManagerProps {
   acomodacaoId: string;
@@ -69,6 +70,11 @@ const MediaManager: React.FC<MediaManagerProps> = ({ acomodacaoId, initialMedia 
   const [newUrl, setNewUrl] = useState("");
   const [newType, setNewType] = useState<'image' | 'video'>('image');
   const [isReordering, setIsReordering] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url'); // Novo estado para método de upload
+
+  // Storage Hook
+  const uploadPath = useMemo(() => `acomodacoes/${acomodacaoId}`, [acomodacaoId]);
+  const { uploadFile, isUploading } = useStorageUpload(uploadPath);
 
   // Mutations
   const createMutation = useMutation({
@@ -124,6 +130,40 @@ const MediaManager: React.FC<MediaManagerProps> = ({ acomodacaoId, initialMedia 
       ordem: nextOrder,
     });
   };
+  
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Verifica o tipo de arquivo para garantir que corresponde ao tipo selecionado
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    
+    if (newType === 'image' && !isImage) {
+        showError("Por favor, selecione um arquivo de imagem.");
+        event.target.value = '';
+        return;
+    }
+    if (newType === 'video' && !isVideo) {
+        showError("Por favor, selecione um arquivo de vídeo (mp4).");
+        event.target.value = '';
+        return;
+    }
+
+    const url = await uploadFile(file);
+    if (url) {
+        // Determina a próxima ordem
+        const nextOrder = mediaList.length > 0 ? Math.max(...mediaList.map(m => m.ordem)) + 1 : 0;
+        
+        createMutation.mutate({
+            acomodacao_id: acomodacaoId,
+            url: url,
+            tipo: newType,
+            ordem: nextOrder,
+        });
+    }
+    event.target.value = ''; // Limpa o input
+  };
 
   const handleRemoveMedia = (id: string) => {
     deleteMutation.mutate(id);
@@ -156,6 +196,8 @@ const MediaManager: React.FC<MediaManagerProps> = ({ acomodacaoId, initialMedia 
       }));
       reorderMutation.mutate(updates);
   };
+  
+  const isAddingPending = createMutation.isPending || isUploading;
 
   return (
     <Card>
@@ -163,31 +205,82 @@ const MediaManager: React.FC<MediaManagerProps> = ({ acomodacaoId, initialMedia 
         <CardTitle className="text-xl">Galeria de Mídias Adicionais</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Seletor de Tipo de Mídia */}
+        <div className="flex space-x-3">
+            <Select value={newType} onValueChange={(value: 'image' | 'video') => {
+                setNewType(value);
+                setNewUrl(""); // Limpa a URL ao mudar o tipo
+            }}>
+                <SelectTrigger className="w-full md:w-[150px]">
+                    <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="image">Imagem</SelectItem>
+                    <SelectItem value="video">Vídeo</SelectItem>
+                </SelectContent>
+            </Select>
+            
+            <Select value={uploadMethod} onValueChange={(value: 'url' | 'file') => {
+                setUploadMethod(value);
+                setNewUrl(""); // Limpa a URL ao mudar o método
+            }}>
+                <SelectTrigger className="w-full md:w-[150px]">
+                    <SelectValue placeholder="Método" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="url">URL Externa</SelectItem>
+                    <SelectItem value="file">Upload de Arquivo</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+
         {/* Formulário de Adição */}
         <div className="flex flex-col md:flex-row gap-3">
-          <Select value={newType} onValueChange={(value: 'image' | 'video') => setNewType(value)}>
-            <SelectTrigger className="w-full md:w-[150px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="image">Imagem</SelectItem>
-              <SelectItem value="video">Vídeo (URL)</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            placeholder={newType === 'image' ? "URL da Imagem Adicional" : "URL do Vídeo (Ex: Youtube Embed)"}
-            value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleAddMedia} 
-            disabled={createMutation.isPending || !newUrl.trim()}
-            className="w-full md:w-auto"
-          >
-            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4 mr-2" />}
-            Adicionar
-          </Button>
+          {uploadMethod === 'url' ? (
+            <>
+                <Input
+                    placeholder={newType === 'image' ? "URL da Imagem Adicional" : "URL do Vídeo (Ex: Youtube Embed)"}
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    className="flex-1"
+                    disabled={isAddingPending}
+                />
+                <Button 
+                    onClick={handleAddMedia} 
+                    disabled={isAddingPending || !newUrl.trim()}
+                    className="w-full md:w-auto"
+                >
+                    {isAddingPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4 mr-2" />}
+                    Adicionar URL
+                </Button>
+            </>
+          ) : (
+            <label htmlFor="media-upload" className="flex-1">
+                <Button asChild variant="outline" className="w-full" disabled={isAddingPending}>
+                    <div className="flex items-center justify-center">
+                        {isAddingPending ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Enviando...
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Fazer Upload de {newType === 'image' ? 'Imagem (webp/jpg/png)' : 'Vídeo (mp4)'}
+                            </>
+                        )}
+                    </div>
+                </Button>
+                <input
+                    id="media-upload"
+                    type="file"
+                    accept={newType === 'image' ? "image/webp, image/jpeg, image/png" : "video/mp4"}
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={isAddingPending}
+                />
+            </label>
+          )}
         </div>
 
         {/* Lista de Mídias */}

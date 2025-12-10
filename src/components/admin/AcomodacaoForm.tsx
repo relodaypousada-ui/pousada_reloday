@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,11 +18,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
 import { Acomodacao, AcomodacaoInsert, useCreateAcomodacao, useUpdateAcomodacao } from "@/integrations/supabase/acomodacoes";
 import { useAllComodidades } from "@/integrations/supabase/comodidades";
 import { cn } from "@/lib/utils";
-import MediaManager from "./MediaManager"; // Importando o novo componente
+import MediaManager from "./MediaManager";
+import { useStorageUpload } from "@/hooks/useStorageUpload";
+import { showSuccess } from "@/utils/toast";
 
 // Schema de Validação
 const formSchema = z.object({
@@ -35,7 +37,6 @@ const formSchema = z.object({
   preco: z.coerce.number().min(0.01, "O preço deve ser maior que zero."),
   imagem_url: z.string().url("URL de imagem inválida.").optional().or(z.literal("")),
   is_active: z.boolean().default(true),
-  // Novo campo para as comodidades
   comodidadeIds: z.array(z.string()).default([]),
 });
 
@@ -62,28 +63,42 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
       preco: initialData?.preco || 0.01,
       imagem_url: initialData?.imagem_url || "",
       is_active: initialData?.is_active ?? true,
-      // Inicializa com os IDs das comodidades existentes
       comodidadeIds: initialData?.comodidades?.map(c => c.id) || [],
     },
   });
   
-  // Atualiza os valores iniciais das comodidades se o initialData for carregado depois
+  // Define o caminho de upload baseado no slug (ou um placeholder se for criação)
+  const currentSlug = form.watch('slug');
+  const uploadPath = useMemo(() => `acomodacoes/${currentSlug || 'temp'}`, [currentSlug]);
+  const { uploadFile, isUploading } = useStorageUpload(uploadPath);
+
   useEffect(() => {
     if (initialData && initialData.comodidades) {
         form.setValue("comodidadeIds", initialData.comodidades.map(c => c.id), { shouldDirty: false });
     }
   }, [initialData, form]);
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const url = await uploadFile(file);
+        if (url) {
+            form.setValue("imagem_url", url, { shouldDirty: true });
+            showSuccess("Imagem principal carregada com sucesso!");
+        }
+        // Limpa o input para permitir o upload do mesmo arquivo novamente
+        event.target.value = ''; 
+    }
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const dataToSubmit: AcomodacaoInsert = {
         ...values,
-        // Garante que o preço seja enviado como número (numeric no DB)
         preco: Number(values.preco), 
         capacidade: Number(values.capacidade),
         descricao: values.descricao || null,
         imagem_url: values.imagem_url || null,
-        comodidadeIds: values.comodidadeIds, // Inclui os IDs das comodidades
+        comodidadeIds: values.comodidadeIds,
     };
 
     if (isEditing && initialData) {
@@ -122,6 +137,9 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
               <FormControl>
                 <Input placeholder="ex-suite-master" {...field} />
               </FormControl>
+              <FormDescription>
+                Usado na URL. Deve ser único e conter apenas letras minúsculas, números e hífens.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -176,8 +194,38 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
             <FormItem>
               <FormLabel>URL da Imagem Principal</FormLabel>
               <FormControl>
-                <Input placeholder="https://exemplo.com/imagem.jpg" {...field} />
+                <div className="flex space-x-2">
+                    <Input placeholder="https://exemplo.com/imagem.jpg" {...field} className="flex-1" />
+                    <label htmlFor="main-image-upload" className="cursor-pointer">
+                        <Button asChild variant="outline" disabled={isUploading}>
+                            <div className="flex items-center">
+                                {isUploading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Upload className="h-4 w-4" />
+                                )}
+                            </div>
+                        </Button>
+                    </label>
+                    <input
+                        id="main-image-upload"
+                        type="file"
+                        accept="image/webp, image/jpeg, image/png"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                    />
+                </div>
               </FormControl>
+              <FormDescription>
+                {field.value ? (
+                    <div className="flex items-center mt-2 text-xs text-green-600">
+                        <ImageIcon className="h-3 w-3 mr-1" /> Imagem atual: {field.value.substring(0, 50)}...
+                    </div>
+                ) : (
+                    "Insira uma URL ou faça upload de uma imagem (webp, jpg, png)."
+                )}
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -279,8 +327,8 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isPending}>
-          {isPending ? (
+        <Button type="submit" className="w-full" disabled={isPending || isUploading}>
+          {isPending || isUploading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : isEditing ? (
             "Salvar Alterações"
