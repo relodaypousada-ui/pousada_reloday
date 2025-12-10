@@ -15,6 +15,7 @@ import Reserva from "./pages/Reserva";
 import AcompanharReserva from "./pages/AcompanharReserva";
 import Login from "./pages/Login";
 import CriarPerfil from "./pages/CriarPerfil";
+import Acomodacoes from "./pages/Acomodacoes"; // Importação adicionada
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<LayoutWrapper element={<Index />} />} />
           <Route path="/quem-somos" element={<LayoutWrapper element={<QuemSomos />} />} />
+          <Route path="/acomodacoes" element={<LayoutWrapper element={<Acomodacoes />} />} /> {/* Rota adicionada */}
           <Route path="/como-chegar" element={<LayoutWrapper element={<ComoChegar />} />} />
           <Route path="/galeria" element={<LayoutWrapper element={<Galeria />} />} />
           <Route path="/blog" element={<LayoutWrapper element={<Blog />} />} />
