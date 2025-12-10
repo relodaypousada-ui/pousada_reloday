@@ -2,7 +2,7 @@ import React from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import AcomodacaoCard from "@/components/AcomodacaoCard";
 import { Button } from "@/components/ui/button";
-import { Utensils, Wifi, Sun, MapPin, Loader2 } from "lucide-react";
+import { Utensils, Wifi, Sun, MapPin, Loader2, ImageOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSlides } from "@/integrations/supabase/slides";
 import { useFeaturedAcomodacoes } from "@/integrations/supabase/acomodacoes"; // Importando o hook de destaque
@@ -32,10 +32,14 @@ const Index: React.FC = () => {
     }
 
     if (isErrorSlides || !slides || slides.length === 0) {
-      // Fallback visual se houver erro ou nenhum slide
+      // Fallback visual amigável
       return (
-        <div className="w-full h-[60vh] md:h-[70vh] bg-red-50 flex items-center justify-center">
-          <p className="text-red-600">Erro ao carregar o carrossel. Verifique a conexão com o Supabase e a tabela 'slides'.</p>
+        <div className="w-full h-[60vh] md:h-[70vh] bg-gray-200 flex items-center justify-center text-center p-4">
+          <div className="text-gray-600">
+            <ImageOff className="h-12 w-12 mx-auto mb-3" />
+            <p className="text-xl font-semibold">Bem-vindo à Pousada Reloday</p>
+            <p className="text-sm mt-1">Adicione slides na tabela 'slides' do Supabase para personalizar esta área.</p>
+          </div>
         </div>
       );
     }
