@@ -22,6 +22,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminAcomodacoesPage from "./pages/admin/AdminAcomodacoesPage";
+import AdminComodidadesPage from "./pages/admin/AdminComodidadesPage"; // Novo Import
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/admin" element={<AdminLayoutWrapper element={<AdminDashboard />} />} />
             <Route path="/admin/clientes" element={<AdminLayoutWrapper element={<AdminUsersPage />} />} />
             <Route path="/admin/acomodacoes" element={<AdminLayoutWrapper element={<AdminAcomodacoesPage />} />} />
+            <Route path="/admin/comodidades" element={<AdminLayoutWrapper element={<AdminComodidadesPage />} />} /> {/* Nova Rota */}
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

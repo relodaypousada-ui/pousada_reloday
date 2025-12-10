@@ -2,6 +2,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
 
+export interface Comodidade {
+  id: string;
+  nome: string;
+  icone: string | null; // Nome do ícone Lucide React
+}
+
+export interface AcomodacaoMidia {
+  id: string;
+  url: string;
+  tipo: 'image' | 'video';
+  ordem: number;
+}
+
 export interface Acomodacao {
   id: string;
   titulo: string;
@@ -11,10 +24,13 @@ export interface Acomodacao {
   preco: number;
   imagem_url: string | null;
   is_active: boolean; // Adicionando is_active para o admin
+  // Novos campos para detalhes
+  midia?: AcomodacaoMidia[];
+  comodidades?: Comodidade[];
 }
 
 // Tipagem para os dados de entrada do formulário
-export type AcomodacaoInsert = Omit<Acomodacao, 'id' | 'created_at'>;
+export type AcomodacaoInsert = Omit<Acomodacao, 'id' | 'created_at' | 'midia' | 'comodidades'>;
 export type AcomodacaoUpdate = Partial<AcomodacaoInsert>;
 
 // Função para buscar todas as acomodações ativas (para o frontend público)
@@ -52,7 +68,11 @@ const getAdminAcomodacoes = async (): Promise<Acomodacao[]> => {
 const getAcomodacaoById = async (id: string): Promise<Acomodacao | null> => {
   const { data, error } = await supabase
     .from("acomodacoes")
-    .select("*")
+    .select(`
+      *,
+      midia:acomodacao_midia (id, url, tipo, ordem),
+      comodidades:acomodacao_comodidade (comodidade:comodidades (id, nome, icone))
+    `)
     .eq("id", id)
     .single();
 
@@ -60,15 +80,30 @@ const getAcomodacaoById = async (id: string): Promise<Acomodacao | null> => {
     console.error("Erro ao buscar acomodação por ID:", error);
     throw new Error("Não foi possível carregar a acomodação.");
   }
+  
+  if (data) {
+    // Mapeia as comodidades para o formato desejado
+    const mappedComodidades = data.comodidades?.map((c: any) => c.comodidade) || [];
+    
+    return {
+      ...data,
+      midia: data.midia?.sort((a, b) => a.ordem - b.ordem) || [],
+      comodidades: mappedComodidades,
+    } as Acomodacao;
+  }
 
-  return data as Acomodacao | null;
+  return null;
 };
 
 // Função para buscar uma única acomodação pelo Slug
 const getAcomodacaoBySlug = async (slug: string): Promise<Acomodacao | null> => {
   const { data, error } = await supabase
     .from("acomodacoes")
-    .select("*")
+    .select(`
+      *,
+      midia:acomodacao_midia (id, url, tipo, ordem),
+      comodidades:acomodacao_comodidade (comodidade:comodidades (id, nome, icone))
+    `)
     .eq("slug", slug)
     .eq("is_active", true) // Apenas acomodações ativas para o frontend
     .single();
@@ -78,7 +113,18 @@ const getAcomodacaoBySlug = async (slug: string): Promise<Acomodacao | null> => 
     throw new Error("Não foi possível carregar a acomodação.");
   }
 
-  return data as Acomodacao | null;
+  if (data) {
+    // Mapeia as comodidades para o formato desejado
+    const mappedComodidades = data.comodidades?.map((c: any) => c.comodidade) || [];
+    
+    return {
+      ...data,
+      midia: data.midia?.sort((a, b) => a.ordem - b.ordem) || [],
+      comodidades: mappedComodidades,
+    } as Acomodacao;
+  }
+
+  return null;
 };
 
 

@@ -4,6 +4,8 @@ import { useAcomodacaoBySlug } from "@/integrations/supabase/acomodacoes";
 import { Loader2, Users, DollarSign, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import MediaCarousel from "@/components/MediaCarousel";
+import AmenityList from "@/components/AmenityList";
 
 const AcomodacaoDetalhe: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -41,31 +43,25 @@ const AcomodacaoDetalhe: React.FC = () => {
 
   return (
     <div className="w-full">
-      {/* Hero Section / Imagem Principal */}
-      <div className="relative h-[50vh] w-full overflow-hidden">
-        <img
-          src={acomodacao.imagem_url || "/placeholder-acomodacao.jpg"}
-          alt={acomodacao.titulo}
-          className="w-full h-full object-cover"
+      {/* Hero Section / Carrossel de Mídia */}
+      <div className="container py-8">
+        <MediaCarousel 
+            media={acomodacao.midia || []} 
+            mainImageUrl={acomodacao.imagem_url}
+            title={acomodacao.titulo}
         />
-        <div className="absolute inset-0 bg-black/40 flex items-end">
-          <div className="container pb-8 text-white">
-            <h1 className="text-5xl font-extrabold drop-shadow-lg">{acomodacao.titulo}</h1>
-          </div>
-        </div>
       </div>
 
-      <div className="container py-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="container py-4 grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* Coluna Principal: Detalhes e Descrição */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="flex items-center space-x-6 text-lg">
-            <div className="flex items-center text-primary font-semibold">
-              <Users className="h-5 w-5 mr-2" />
-              <span>Capacidade: {acomodacao.capacidade} Hóspedes</span>
-            </div>
-            <div className="flex items-center text-primary font-semibold">
-              <DollarSign className="h-5 w-5 mr-2" />
-              <span>Preço/Noite: {precoFormatado}</span>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <h1 className="text-4xl font-extrabold mb-4 md:mb-0">{acomodacao.titulo}</h1>
+            <div className="flex items-center space-x-6 text-lg">
+                <div className="flex items-center text-primary font-semibold">
+                <Users className="h-5 w-5 mr-2" />
+                <span>Capacidade: {acomodacao.capacidade} Hóspedes</span>
+                </div>
             </div>
           </div>
 
@@ -78,12 +74,10 @@ const AcomodacaoDetalhe: React.FC = () => {
             </p>
           </div>
 
-          {/* Placeholder para Galeria de Fotos Adicionais / Comodidades */}
+          {/* Comodidades */}
           <div className="pt-4">
-            <h2 className="text-3xl font-bold mb-4">Comodidades</h2>
-            <div className="h-32 bg-gray-50 border rounded-lg flex items-center justify-center text-muted-foreground">
-                Placeholder: Lista de comodidades (Ar Condicionado, TV, etc.)
-            </div>
+            <h2 className="text-3xl font-bold mb-4">Comodidades Inclusas</h2>
+            <AmenityList comodidades={acomodacao.comodidades || []} />
           </div>
         </div>
 
