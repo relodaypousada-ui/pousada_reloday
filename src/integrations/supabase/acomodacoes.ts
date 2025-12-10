@@ -64,6 +64,24 @@ const getAcomodacaoById = async (id: string): Promise<Acomodacao | null> => {
   return data as Acomodacao | null;
 };
 
+// Função para buscar uma única acomodação pelo Slug
+const getAcomodacaoBySlug = async (slug: string): Promise<Acomodacao | null> => {
+  const { data, error } = await supabase
+    .from("acomodacoes")
+    .select("*")
+    .eq("slug", slug)
+    .eq("is_active", true) // Apenas acomodações ativas para o frontend
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+    console.error("Erro ao buscar acomodação por slug:", error);
+    throw new Error("Não foi possível carregar a acomodação.");
+  }
+
+  return data as Acomodacao | null;
+};
+
+
 // Hooks de Query
 export const useAllAcomodacoes = () => {
   return useQuery<Acomodacao[], Error>({
@@ -106,6 +124,15 @@ export const useAcomodacao = (id: string) => {
     enabled: !!id,
   });
 };
+
+export const useAcomodacaoBySlug = (slug: string | undefined) => {
+  return useQuery<Acomodacao | null, Error>({
+    queryKey: ["acomodacoes", "slug", slug],
+    queryFn: () => getAcomodacaoBySlug(slug!),
+    enabled: !!slug,
+  });
+};
+
 
 // Hooks de Mutação (CRUD Admin)
 

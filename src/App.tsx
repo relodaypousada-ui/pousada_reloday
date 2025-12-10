@@ -17,10 +17,11 @@ import AcompanharReserva from "./pages/AcompanharReserva";
 import Login from "./pages/Login";
 import CriarPerfil from "./pages/CriarPerfil";
 import Acomodacoes from "./pages/Acomodacoes";
+import AcomodacaoDetalhe from "./pages/AcomodacaoDetalhe";
 import AdminDashboard from "./pages/AdminDashboard";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
-import AdminAcomodacoesPage from "./pages/admin/AdminAcomodacoesPage"; // Importação adicionada
+import AdminAcomodacoesPage from "./pages/admin/AdminAcomodacoesPage";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/" element={<LayoutWrapper element={<Index />} />} />
             <Route path="/quem-somos" element={<LayoutWrapper element={<QuemSomos />} />} />
             <Route path="/acomodacoes" element={<LayoutWrapper element={<Acomodacoes />} />} />
+            <Route path="/acomodacoes/:slug" element={<LayoutWrapper element={<AcomodacaoDetalhe />} />} />
             <Route path="/como-chegar" element={<LayoutWrapper element={<ComoChegar />} />} />
             <Route path="/galeria" element={<LayoutWrapper element={<Galeria />} />} />
             <Route path="/blog" element={<LayoutWrapper element={<Blog />} />} />
