@@ -49,15 +49,17 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({ media, mainImageUrl, titl
           />
         ) : (
           <div className="w-full h-full bg-black flex items-center justify-center relative">
-            <Video className="h-12 w-12 text-white/50 absolute z-0" />
-            {/* Placeholder para vídeo. Em um app real, usaríamos um player de vídeo. */}
+            {/* Usamos um iframe para vídeos. O usuário deve fornecer uma URL de embed válida (ex: YouTube embed). */}
             <iframe
               src={currentItem.url}
               title={`${title} - Vídeo`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
+              frameBorder="0"
               className="w-full h-full z-10"
             ></iframe>
+            {/* Ícone de fallback se o iframe não carregar */}
+            <Video className="h-12 w-12 text-white/50 absolute z-0 pointer-events-none" />
           </div>
         )}
       </div>
