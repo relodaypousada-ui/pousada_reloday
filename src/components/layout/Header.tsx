@@ -5,6 +5,7 @@ import { Menu, Hotel, LogOut, User as UserIcon, LayoutDashboard } from "lucide-r
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
+import { useGlobalConfig } from "@/integrations/supabase/configuracoes"; // Importar hook de configuração
 
 const navItems = [
   { name: "Home", href: "/" },
@@ -18,6 +19,9 @@ const navItems = [
 const Header: React.FC = () => {
   const isMobile = useIsMobile();
   const { user, signOut } = useAuth();
+  const { data: config } = useGlobalConfig(); // Buscar configurações
+
+  const siteTitle = config?.titulo_site || "Pousada Reloday"; // Usar título configurado ou fallback
 
   const handleLogout = async () => {
     await signOut();
@@ -70,7 +74,7 @@ const Header: React.FC = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
           <Hotel className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg">Pousada Reloday</span>
+          <span className="font-bold text-lg">{siteTitle}</span>
         </Link>
 
         {/* Navegação Principal */}

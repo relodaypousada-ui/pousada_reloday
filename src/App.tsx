@@ -23,7 +23,8 @@ import RecuperarSenha from "./pages/RecuperarSenha";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminAcomodacoesPage from "./pages/admin/AdminAcomodacoesPage";
 import AdminComodidadesPage from "./pages/admin/AdminComodidadesPage";
-import AdminConfigPage from "./pages/admin/AdminConfigPage"; // Novo Import
+import AdminConfigPage from "./pages/admin/AdminConfigPage";
+import AdminSlidesPage from "./pages/admin/AdminSlidesPage"; // Novo Import
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -74,7 +75,8 @@ const App = () => (
             <Route path="/admin/clientes" element={<AdminLayoutWrapper element={<AdminUsersPage />} />} />
             <Route path="/admin/acomodacoes" element={<AdminLayoutWrapper element={<AdminAcomodacoesPage />} />} />
             <Route path="/admin/comodidades" element={<AdminLayoutWrapper element={<AdminComodidadesPage />} />} />
-            <Route path="/admin/config" element={<AdminLayoutWrapper element={<AdminConfigPage />} />} /> {/* Nova Rota */}
+            <Route path="/admin/slides" element={<AdminLayoutWrapper element={<AdminSlidesPage />} />} /> {/* Nova Rota */}
+            <Route path="/admin/config" element={<AdminLayoutWrapper element={<AdminConfigPage />} />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

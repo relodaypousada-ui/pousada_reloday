@@ -1,13 +1,14 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Home, Calendar, Settings, ListChecks } from "lucide-react";
+import { LayoutDashboard, Users, Home, Calendar, Settings, ListChecks, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const adminNavItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Clientes", href: "/admin/clientes", icon: Users },
   { name: "Acomodações", href: "/admin/acomodacoes", icon: Home },
-  { name: "Comodidades", href: "/admin/comodidades", icon: ListChecks }, // Novo item
+  { name: "Comodidades", href: "/admin/comodidades", icon: ListChecks },
+  { name: "Slides", href: "/admin/slides", icon: Image }, // Novo item
   { name: "Reservas", href: "/admin/reservas", icon: Calendar },
   { name: "Configurações", href: "/admin/config", icon: Settings },
 ];
