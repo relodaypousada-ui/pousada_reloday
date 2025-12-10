@@ -18,6 +18,9 @@ const AcomodacaoCard: React.FC<AcomodacaoCardProps> = ({ acomodacao }) => {
 
   // Verifica se o slug é válido antes de criar o link de detalhes
   const isSlugValid = acomodacao.slug && acomodacao.slug.length > 0;
+  
+  // LOG DE RASTREAMENTO
+  console.log(`AcomodacaoCard: Título: ${acomodacao.titulo}, Slug: ${acomodacao.slug}, Link Válido: ${isSlugValid}`);
 
   return (
     <article className="bg-card border rounded-xl shadow-lg overflow-hidden transition-transform hover:shadow-xl hover:scale-[1.01] duration-300">
