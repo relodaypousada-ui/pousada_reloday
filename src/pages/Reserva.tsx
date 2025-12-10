@@ -118,6 +118,7 @@ const Reserva: React.FC = () => {
     }
     
     if (!user) {
+        // Se não estiver logado, redireciona para o login
         showError("Você precisa estar logado para fazer uma reserva.");
         navigate("/login");
         return;
@@ -174,7 +175,29 @@ const Reserva: React.FC = () => {
   }
   
   const isPending = isLoadingAuth || isLoadingAcomodacoes || createReservaMutation.isPending || isLoadingBlockedDates;
-  const isSubmitDisabled = isPending || valorTotal <= 0 || !form.formState.isValid || !user || isAdmin; // Desabilita se for admin
+  const isFormValid = valorTotal > 0 && form.formState.isValid;
+  
+  // Determina o estado do botão de submissão
+  let buttonText = "Solicitar Reserva";
+  let buttonDisabled = isPending || !isFormValid;
+  let buttonAction = form.handleSubmit(onSubmit);
+
+  if (isAdmin) {
+      buttonText = "Ação Bloqueada (Admin)";
+      buttonDisabled = true;
+  } else if (!user) {
+      buttonText = "Fazer Login para Reservar";
+      buttonDisabled = isPending || !isFormValid; // Permite clicar se o formulário for válido para acionar o redirecionamento
+      buttonAction = () => {
+          if (isFormValid) {
+              showError("Você precisa estar logado para fazer uma reserva.");
+              navigate("/login");
+          } else {
+              // Se o formulário não for válido, submete para mostrar erros de validação
+              form.handleSubmit(onSubmit)();
+          }
+      };
+  }
   
   // Função para desabilitar datas no calendário
   const disabledDates = (date: Date) => {
@@ -193,7 +216,12 @@ const Reserva: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={user && !isAdmin ? form.handleSubmit(onSubmit) : (e) => {
+                e.preventDefault();
+                if (!user) {
+                    buttonAction();
+                }
+            }} className="space-y-6">
               
               {/* 1. Seleção de Acomodação */}
               <FormField
@@ -373,35 +401,28 @@ const Reserva: React.FC = () => {
                           Você está logado como administrador. Não é permitido criar reservas através desta interface.
                       </p>
                   </div>
-              ) : !user ? (
+              ) : !user && isFormValid ? (
                   <div className="p-4 bg-red-100 border border-red-300 rounded-lg text-center text-red-700">
                       <p className="font-semibold flex items-center justify-center">
                           <LogIn className="h-5 w-5 mr-2" />
                           Login Necessário
                       </p>
                       <p className="text-sm mt-1">
-                          Para **Solicitar Reserva**, você deve estar logado. O valor acima é apenas uma simulação.
+                          Para **Solicitar Reserva**, você deve estar logado.
                       </p>
-                      <Button 
-                          type="button" 
-                          variant="destructive" 
-                          className="mt-3 w-full"
-                          onClick={() => navigate("/login")}
-                      >
-                          Ir para Login
-                      </Button>
                   </div>
               ) : null}
               
               <Button 
-                type="submit" 
+                type={user && !isAdmin ? "submit" : "button"} // Usa type="button" se não estiver logado para gerenciar o clique manualmente
                 className="w-full" 
-                disabled={isSubmitDisabled}
+                disabled={buttonDisabled}
+                onClick={!user && !isAdmin ? buttonAction : undefined}
               >
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  "Solicitar Reserva"
+                  buttonText
                 )}
               </Button>
               
