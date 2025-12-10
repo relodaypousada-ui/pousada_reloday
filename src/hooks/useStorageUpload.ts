@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { showError } from "@/utils/toast";
 
-const BUCKET_NAME = "acomodacao-media";
+const BUCKET_NAME = "imagens_video"; // Corrigido para o nome do bucket do usuário
 
 /**
  * Hook para gerenciar o upload de arquivos para o Supabase Storage.
