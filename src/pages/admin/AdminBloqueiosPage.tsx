@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowLeft, CalendarOff, Home } from "lucide-react";
+import { PlusCircle, ArrowLeft, CalendarOff, Home, Loader2 } from "lucide-react";
 import BloqueioForm from "@/components/admin/BloqueioForm";
 import BloqueioList from "@/components/admin/BloqueioList";
 import BloqueioCalendar from "@/components/admin/BloqueioCalendar"; // Novo Import
@@ -9,7 +9,6 @@ import { useAllAcomodacoes } from "@/integrations/supabase/acomodacoes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "@/components/ui/loader"; // Importando Loader2 do lucide-react
 
 // Função para buscar TODOS os bloqueios manuais (Admin)
 const getAllManualBlocksAdmin = async () => {
