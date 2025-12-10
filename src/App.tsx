@@ -20,9 +20,10 @@ import Acomodacoes from "./pages/Acomodacoes";
 import AdminDashboard from "./pages/AdminDashboard";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminAcomodacoesPage from "./pages/admin/AdminAcomodacoesPage"; // Importação adicionada
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import AdminRoute from "./components/auth/AdminRoute"; // Importação adicionada
+import AdminRoute from "./components/auth/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +34,7 @@ const LayoutWrapper = ({ element }: { element: React.ReactNode }) => (
 
 // Componente Wrapper para aplicar o layout Admin nas rotas
 const AdminLayoutWrapper = ({ element }: { element: React.ReactNode }) => (
-  <AdminRoute> {/* Usando AdminRoute aqui */}
+  <AdminRoute>
     <AdminLayout>{element}</AdminLayout>
   </AdminRoute>
 );
@@ -67,6 +68,7 @@ const App = () => (
             {/* Rotas Administrativas Protegidas (Usando AdminLayout e AdminRoute) */}
             <Route path="/admin" element={<AdminLayoutWrapper element={<AdminDashboard />} />} />
             <Route path="/admin/clientes" element={<AdminLayoutWrapper element={<AdminUsersPage />} />} />
+            <Route path="/admin/acomodacoes" element={<AdminLayoutWrapper element={<AdminAcomodacoesPage />} />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
