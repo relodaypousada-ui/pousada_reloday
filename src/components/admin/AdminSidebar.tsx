@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Home, Calendar, Settings, ListChecks, Image } from "lucide-react";
+import { LayoutDashboard, Users, Home, Calendar, Settings, ListChecks, Image, CalendarOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const adminNavItems = [
@@ -8,8 +8,9 @@ const adminNavItems = [
   { name: "Clientes", href: "/admin/clientes", icon: Users },
   { name: "Acomodações", href: "/admin/acomodacoes", icon: Home },
   { name: "Comodidades", href: "/admin/comodidades", icon: ListChecks },
-  { name: "Slides", href: "/admin/slides", icon: Image }, // Novo item
+  { name: "Slides", href: "/admin/slides", icon: Image },
   { name: "Reservas", href: "/admin/reservas", icon: Calendar },
+  { name: "Bloqueios Manuais", href: "/admin/bloqueios", icon: CalendarOff }, // Novo item
   { name: "Configurações", href: "/admin/config", icon: Settings },
 ];
 

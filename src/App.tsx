@@ -25,7 +25,8 @@ import AdminAcomodacoesPage from "./pages/admin/AdminAcomodacoesPage";
 import AdminComodidadesPage from "./pages/admin/AdminComodidadesPage";
 import AdminConfigPage from "./pages/admin/AdminConfigPage";
 import AdminSlidesPage from "./pages/admin/AdminSlidesPage";
-import AdminReservasPage from "./pages/admin/AdminReservasPage"; // Novo Import
+import AdminReservasPage from "./pages/admin/AdminReservasPage";
+import AdminBloqueiosPage from "./pages/admin/AdminBloqueiosPage"; // Novo Import
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -77,7 +78,8 @@ const App = () => (
             <Route path="/admin/acomodacoes" element={<AdminLayoutWrapper element={<AdminAcomodacoesPage />} />} />
             <Route path="/admin/comodidades" element={<AdminLayoutWrapper element={<AdminComodidadesPage />} />} />
             <Route path="/admin/slides" element={<AdminLayoutWrapper element={<AdminSlidesPage />} />} />
-            <Route path="/admin/reservas" element={<AdminLayoutWrapper element={<AdminReservasPage />} />} /> {/* Rota de Reservas */}
+            <Route path="/admin/reservas" element={<AdminLayoutWrapper element={<AdminReservasPage />} />} />
+            <Route path="/admin/bloqueios" element={<AdminLayoutWrapper element={<AdminBloqueiosPage />} />} /> {/* Nova Rota */}
             <Route path="/admin/config" element={<AdminLayoutWrapper element={<AdminConfigPage />} />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
