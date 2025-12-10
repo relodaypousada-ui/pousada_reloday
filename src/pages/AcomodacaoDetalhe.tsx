@@ -1,11 +1,12 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAcomodacaoBySlug } from "@/integrations/supabase/acomodacoes";
-import { Loader2, Users, DollarSign, ArrowLeft } from "lucide-react";
+import { Loader2, Users, DollarSign, ArrowLeft, ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import MediaCarousel from "@/components/MediaCarousel";
 import AmenityList from "@/components/AmenityList";
+import ImageGalleryCarousel from "@/components/ImageGalleryCarousel"; // Novo Import
+import VideoCard from "@/components/VideoCard"; // Novo Import
 
 const AcomodacaoDetalhe: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -40,19 +41,36 @@ const AcomodacaoDetalhe: React.FC = () => {
     currency: 'BRL',
     minimumFractionDigits: 2,
   }).format(acomodacao.preco);
+  
+  // 1. Filtrar e separar as mídias
+  const additionalImages = (acomodacao.midia || [])
+    .filter(m => m.tipo === 'image')
+    .sort((a, b) => a.ordem - b.ordem);
+    
+  const videos = (acomodacao.midia || [])
+    .filter(m => m.tipo === 'video')
+    .sort((a, b) => a.ordem - b.ordem);
 
   return (
     <div className="w-full">
-      {/* Hero Section / Carrossel de Mídia */}
-      <div className="container py-8">
-        <MediaCarousel 
-            media={acomodacao.midia || []} 
-            mainImageUrl={acomodacao.imagem_url}
-            title={acomodacao.titulo}
-        />
+      {/* 1. Banner Principal (Imagem Principal) */}
+      <div className="w-full h-[50vh] md:h-[60vh] overflow-hidden relative">
+        {acomodacao.imagem_url ? (
+            <img
+                src={acomodacao.imagem_url}
+                alt={acomodacao.titulo}
+                className="w-full h-full object-cover"
+                loading="eager"
+            />
+        ) : (
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                <ImageOff className="h-12 w-12 text-gray-500" />
+            </div>
+        )}
+        <div className="absolute inset-0 bg-black/20"></div>
       </div>
 
-      <div className="container py-4 grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="container py-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* Coluna Principal: Detalhes e Descrição */}
         <div className="lg:col-span-2 space-y-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -73,6 +91,24 @@ const AcomodacaoDetalhe: React.FC = () => {
               {acomodacao.descricao || "Nenhuma descrição detalhada fornecida para esta acomodação."}
             </p>
           </div>
+
+          {/* 2. Carrossel de Imagens Adicionais */}
+          <div className="pt-4">
+            <h2 className="text-3xl font-bold mb-4">Galeria de Fotos</h2>
+            <ImageGalleryCarousel images={additionalImages} title={acomodacao.titulo} />
+          </div>
+          
+          {/* 3. Vídeos Adicionais */}
+          {videos.length > 0 && (
+            <div className="pt-4">
+              <h2 className="text-3xl font-bold mb-4">Vídeos</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {videos.map((video, index) => (
+                  <VideoCard key={video.id} media={video} index={index} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Comodidades */}
           <div className="pt-4">
