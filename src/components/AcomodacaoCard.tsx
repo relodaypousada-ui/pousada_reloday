@@ -2,16 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Users, DollarSign } from "lucide-react";
-
-interface Acomodacao {
-  id: string;
-  titulo: string;
-  slug: string;
-  descricao: string;
-  capacidade: number;
-  preco: number; // Preço por noite
-  imagem: string; // URL da imagem de destaque
-}
+import { Acomodacao } from "@/integrations/supabase/acomodacoes"; // Importando a tipagem correta
 
 interface AcomodacaoCardProps {
   acomodacao: Acomodacao;
@@ -30,7 +21,7 @@ const AcomodacaoCard: React.FC<AcomodacaoCardProps> = ({ acomodacao }) => {
       {/* Imagem */}
       <div className="h-56 w-full relative">
         <img
-          src={acomodacao.imagem || "/placeholder-acomodacao.jpg"}
+          src={acomodacao.imagem_url || "/placeholder-acomodacao.jpg"}
           alt={acomodacao.titulo}
           className="w-full h-full object-cover"
           loading="lazy"

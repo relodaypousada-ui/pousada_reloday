@@ -4,42 +4,13 @@ import AcomodacaoCard from "@/components/AcomodacaoCard";
 import { Button } from "@/components/ui/button";
 import { Utensils, Wifi, Sun, MapPin, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useSlides } from "@/integrations/supabase/slides"; // Importando o hook
+import { useSlides } from "@/integrations/supabase/slides";
+import { useFeaturedAcomodacoes } from "@/integrations/supabase/acomodacoes"; // Importando o hook de destaque
 
-// --- Dados Mockados para Demonstração (Acomodações e Serviços mantidos por enquanto) ---
-
-const mockAcomodacoes = [
-  {
-    id: "a1",
-    titulo: "Suíte Master Luxo",
-    slug: "suite-master-luxo",
-    descricao: "Acomodação espaçosa com vista privilegiada, ideal para casais que buscam exclusividade e conforto.",
-    capacidade: 2,
-    preco: 450.00,
-    imagem: "https://via.placeholder.com/600x400/87CEFA/FFFFFF?text=Su%C3%ADte+Master",
-  },
-  {
-    id: "a2",
-    titulo: "Chalé Família",
-    slug: "chale-familia",
-    descricao: "Perfeito para famílias, com dois quartos e cozinha compacta. Sinta-se em casa!",
-    capacidade: 4,
-    preco: 320.00,
-    imagem: "https://via.placeholder.com/600x400/F08080/FFFFFF?text=Chal%C3%A9+Fam%C3%ADlia",
-  },
-  {
-    id: "a3",
-    titulo: "Quarto Standard",
-    slug: "quarto-standard",
-    descricao: "Opção econômica e confortável para estadias curtas. Cama queen e banheiro privativo.",
-    capacidade: 2,
-    preco: 190.00,
-    imagem: "https://via.placeholder.com/600x400/90EE90/FFFFFF?text=Quarto+Standard",
-  },
-];
+// --- Dados Mockados para Demonstração (Serviços mantidos por enquanto) ---
 
 const mockServicos = [
-    { icon: Utensils, title: "Café da Manhã Gourmet", description: "Incluso na diária, com produtos frescos e regionais." },
+    { icon: Utensils, title: "Café da Manã Gourmet", description: "Incluso na diária, com produtos frescos e regionais." },
     { icon: Wifi, title: "Wi-Fi de Alta Velocidade", description: "Conexão gratuita em todas as áreas da pousada." },
     { icon: Sun, title: "Piscina e Solarium", description: "Área de lazer completa para seu relaxamento." },
     { icon: MapPin, title: "Localização Privilegiada", description: "Próximo aos principais pontos turísticos da região." },
@@ -49,6 +20,7 @@ const mockServicos = [
 
 const Index: React.FC = () => {
   const { data: slides, isLoading: isLoadingSlides, isError: isErrorSlides } = useSlides();
+  const { data: acomodacoes, isLoading: isLoadingAcomodacoes, isError: isErrorAcomodacoes } = useFeaturedAcomodacoes();
 
   const renderHero = () => {
     if (isLoadingSlides) {
@@ -69,6 +41,28 @@ const Index: React.FC = () => {
     }
 
     return <HeroCarousel slides={slides} />;
+  };
+
+  const renderAcomodacoes = () => {
+    if (isLoadingAcomodacoes) {
+      return (
+        <div className="col-span-full flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (isErrorAcomodacoes || !acomodacoes || acomodacoes.length === 0) {
+      return (
+        <div className="col-span-full text-center text-muted-foreground p-10 border rounded-lg">
+          Nenhuma acomodação em destaque encontrada.
+        </div>
+      );
+    }
+
+    return acomodacoes.map((acomodacao) => (
+      <AcomodacaoCard key={acomodacao.id} acomodacao={acomodacao} />
+    ));
   };
 
   return (
@@ -112,9 +106,7 @@ const Index: React.FC = () => {
         <div className="container">
           <h2 className="text-4xl font-bold text-center mb-12">Conheça Nossas Acomodações</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {mockAcomodacoes.map((acomodacao) => (
-              <AcomodacaoCard key={acomodacao.id} acomodacao={acomodacao} />
-            ))}
+            {renderAcomodacoes()}
           </div>
           <div className="text-center mt-12">
             <Link to="/acomodacoes">
