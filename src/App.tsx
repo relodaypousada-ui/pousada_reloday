@@ -15,7 +15,8 @@ import Reserva from "./pages/Reserva";
 import AcompanharReserva from "./pages/AcompanharReserva";
 import Login from "./pages/Login";
 import CriarPerfil from "./pages/CriarPerfil";
-import Acomodacoes from "./pages/Acomodacoes"; // Importação adicionada
+import Acomodacoes from "./pages/Acomodacoes";
+import { AuthProvider } from "./context/AuthContext"; // Importação adicionada
 
 const queryClient = new QueryClient();
 
@@ -30,22 +31,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LayoutWrapper element={<Index />} />} />
-          <Route path="/quem-somos" element={<LayoutWrapper element={<QuemSomos />} />} />
-          <Route path="/acomodacoes" element={<LayoutWrapper element={<Acomodacoes />} />} /> {/* Rota adicionada */}
-          <Route path="/como-chegar" element={<LayoutWrapper element={<ComoChegar />} />} />
-          <Route path="/galeria" element={<LayoutWrapper element={<Galeria />} />} />
-          <Route path="/blog" element={<LayoutWrapper element={<Blog />} />} />
-          <Route path="/contato" element={<LayoutWrapper element={<Contato />} />} />
-          <Route path="/reserva" element={<LayoutWrapper element={<Reserva />} />} />
-          <Route path="/acompanhar-reserva" element={<LayoutWrapper element={<AcompanharReserva />} />} />
-          <Route path="/login" element={<LayoutWrapper element={<Login />} />} />
-          <Route path="/criar-perfil" element={<LayoutWrapper element={<CriarPerfil />} />} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider> {/* AuthProvider envolve as rotas */}
+          <Routes>
+            <Route path="/" element={<LayoutWrapper element={<Index />} />} />
+            <Route path="/quem-somos" element={<LayoutWrapper element={<QuemSomos />} />} />
+            <Route path="/acomodacoes" element={<LayoutWrapper element={<Acomodacoes />} />} />
+            <Route path="/como-chegar" element={<LayoutWrapper element={<ComoChegar />} />} />
+            <Route path="/galeria" element={<LayoutWrapper element={<Galeria />} />} />
+            <Route path="/blog" element={<LayoutWrapper element={<Blog />} />} />
+            <Route path="/contato" element={<LayoutWrapper element={<Contato />} />} />
+            <Route path="/reserva" element={<LayoutWrapper element={<Reserva />} />} />
+            <Route path="/acompanhar-reserva" element={<LayoutWrapper element={<AcompanharReserva />} />} />
+            <Route path="/login" element={<LayoutWrapper element={<Login />} />} />
+            <Route path="/criar-perfil" element={<LayoutWrapper element={<CriarPerfil />} />} />
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

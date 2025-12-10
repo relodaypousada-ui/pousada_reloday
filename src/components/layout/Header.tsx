@@ -1,9 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, Hotel } from "lucide-react";
+import { Menu, Hotel, LogOut, User as UserIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { useAuth } from "@/context/AuthContext"; // Importação adicionada
 
 const navItems = [
   { name: "Home", href: "/" },
@@ -16,6 +17,11 @@ const navItems = [
 
 const Header: React.FC = () => {
   const isMobile = useIsMobile();
+  const { user, signOut } = useAuth(); // Usando o hook de autenticação
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   const NavLinks = () => (
     <nav className="flex space-x-6">
@@ -31,6 +37,25 @@ const Header: React.FC = () => {
     </nav>
   );
 
+  const AuthButton = () => {
+    if (user) {
+      return (
+        <Link to="/acompanhar-reserva">
+          <Button variant="ghost" size="icon" aria-label="Perfil">
+            <UserIcon className="h-5 w-5" />
+          </Button>
+        </Link>
+      );
+    }
+    return (
+      <Link to="/login">
+        <Button variant="ghost" className="hidden sm:inline-flex">
+          Login
+        </Button>
+      </Link>
+    );
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -43,7 +68,9 @@ const Header: React.FC = () => {
         {/* Navegação Principal */}
         {!isMobile && <NavLinks />}
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          {!isMobile && <AuthButton />}
+          
           <Link to="/reserva">
             <Button variant="default">Reservar Agora</Button>
           </Link>
@@ -59,17 +86,38 @@ const Header: React.FC = () => {
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 pt-6">
                   {navItems.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className="text-lg font-medium hover:text-primary"
-                    >
-                      {item.name}
-                    </Link>
+                    <SheetClose asChild key={item.name}>
+                      <Link
+                        to={item.href}
+                        className="text-lg font-medium hover:text-primary"
+                      >
+                        {item.name}
+                      </Link>
+                    </SheetClose>
                   ))}
-                  <Link to="/login" className="text-lg font-medium hover:text-primary">
-                    Login / Perfil
-                  </Link>
+                  
+                  {user ? (
+                    <>
+                      <SheetClose asChild>
+                        <Link to="/acompanhar-reserva" className="text-lg font-medium hover:text-primary flex items-center">
+                          <UserIcon className="h-5 w-5 mr-2" /> Meu Perfil
+                        </Link>
+                      </SheetClose>
+                      <Button 
+                        onClick={handleLogout} 
+                        variant="ghost" 
+                        className="justify-start text-lg font-medium text-destructive hover:text-destructive/90"
+                      >
+                        <LogOut className="h-5 w-5 mr-2" /> Sair
+                      </Button>
+                    </>
+                  ) : (
+                    <SheetClose asChild>
+                      <Link to="/login" className="text-lg font-medium hover:text-primary">
+                        Login / Perfil
+                      </Link>
+                    </SheetClose>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
