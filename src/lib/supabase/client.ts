@@ -1,12 +1,34 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Certifique-se de configurar estas variáveis de ambiente no seu projeto Vite
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY devem ser definidas. A autenticação e o acesso ao banco de dados não funcionarão corretamente até que sejam configuradas.");
+let supabase: SupabaseClient;
+
+if (supabaseUrl && supabaseAnonKey) {
+  // Se as variáveis estiverem presentes, inicializa o cliente real
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+  // Se as variáveis estiverem faltando, loga um erro e cria um cliente mockado
+  console.error(
+    "CRITICAL ERROR: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required but missing. Supabase client is not initialized. Authentication and database access will not work."
+  );
+
+  // Cria um objeto mockado que satisfaz minimamente a interface SupabaseClient
+  // para evitar crashes no AuthContext.
+  const dummyAuth = {
+    getSession: () => Promise.resolve({ data: { session: null }, error: new Error("Supabase not configured.") }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: () => Promise.resolve({ data: { user: null }, error: new Error("Supabase not configured.") }),
+    signUp: () => Promise.resolve({ data: { user: null }, error: new Error("Supabase not configured.") }),
+    signOut: () => Promise.resolve({ error: new Error("Supabase not configured.") }),
+  };
+
+  // Usamos 'as unknown as SupabaseClient' para forçar a tipagem,
+  // já que é um mock parcial.
+  supabase = {
+    auth: dummyAuth,
+  } as unknown as SupabaseClient;
 }
 
-// Garantimos que createClient receba strings, usando fallback para evitar o erro de .trim()
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
+export { supabase };
