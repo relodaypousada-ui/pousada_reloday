@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormControl,
@@ -21,6 +22,7 @@ import { Loader2 } from "lucide-react";
 import { Acomodacao, AcomodacaoInsert, useCreateAcomodacao, useUpdateAcomodacao } from "@/integrations/supabase/acomodacoes";
 import { useAllComodidades } from "@/integrations/supabase/comodidades";
 import { cn } from "@/lib/utils";
+import MediaManager from "./MediaManager"; // Importando o novo componente
 
 // Schema de Validação
 const formSchema = z.object({
@@ -242,6 +244,18 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
             </FormItem>
           )}
         />
+        
+        <Separator />
+        
+        {/* Gerenciador de Mídias Adicionais (Apenas em Edição) */}
+        {isEditing && initialData && (
+            <MediaManager 
+                acomodacaoId={initialData.id} 
+                initialMedia={initialData.midia || []} 
+            />
+        )}
+        
+        <Separator />
 
 
         <FormField
