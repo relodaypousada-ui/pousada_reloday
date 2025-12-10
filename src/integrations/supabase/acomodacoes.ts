@@ -30,7 +30,10 @@ export interface Acomodacao {
 }
 
 // Tipagem para os dados de entrada do formulário
-export type AcomodacaoInsert = Omit<Acomodacao, 'id' | 'created_at' | 'midia' | 'comodidades'>;
+// Adicionamos comodidadeIds para o formulário
+export type AcomodacaoInsert = Omit<Acomodacao, 'id' | 'created_at' | 'midia' | 'comodidades'> & {
+    comodidadeIds?: string[];
+};
 export type AcomodacaoUpdate = Partial<AcomodacaoInsert>;
 
 // Função para buscar todas as acomodações ativas (para o frontend público)
@@ -49,7 +52,7 @@ const getAllAcomodacoes = async (): Promise<Acomodacao[]> => {
   return data as Acomodacao[];
 };
 
-// Função para buscar TODAS as acomodações (para o painel admin)
+// Função para buscar TODAS as acomodacoes (para o painel admin)
 const getAdminAcomodacoes = async (): Promise<Acomodacao[]> => {
   const { data, error } = await supabase
     .from("acomodacoes")
@@ -127,6 +130,37 @@ const getAcomodacaoBySlug = async (slug: string): Promise<Acomodacao | null> => 
   return null;
 };
 
+// Função auxiliar para sincronizar comodidades
+const upsertAcomodacaoComodidades = async (acomodacaoId: string, comodidadeIds: string[]) => {
+    // 1. Deleta todas as associações existentes para esta acomodação
+    const { error: deleteError } = await supabase
+        .from('acomodacao_comodidade')
+        .delete()
+        .eq('acomodacao_id', acomodacaoId);
+
+    if (deleteError) {
+        console.error("Erro ao deletar comodidades antigas:", deleteError);
+        throw new Error(`Falha ao sincronizar comodidades: ${deleteError.message}`);
+    }
+
+    // 2. Insere as novas associações
+    if (comodidadeIds.length > 0) {
+        const inserts = comodidadeIds.map(comodidadeId => ({
+            acomodacao_id: acomodacaoId,
+            comodidade_id: comodidadeId,
+        }));
+
+        const { error: insertError } = await supabase
+            .from('acomodacao_comodidade')
+            .insert(inserts);
+
+        if (insertError) {
+            console.error("Erro ao inserir novas comodidades:", insertError);
+            throw new Error(`Falha ao sincronizar comodidades: ${insertError.message}`);
+        }
+    }
+};
+
 
 // Hooks de Query
 export const useAllAcomodacoes = () => {
@@ -183,10 +217,12 @@ export const useAcomodacaoBySlug = (slug: string | undefined) => {
 // Hooks de Mutação (CRUD Admin)
 
 // 1. Criar Acomodação
-const createAcomodacao = async (newAcomodacao: AcomodacaoInsert): Promise<Acomodacao> => {
-  const { data, error } = await supabase
+const createAcomodacao = async (data: AcomodacaoInsert): Promise<Acomodacao> => {
+  const { comodidadeIds, ...newAcomodacaoData } = data;
+  
+  const { data: acomodacao, error } = await supabase
     .from("acomodacoes")
-    .insert(newAcomodacao)
+    .insert(newAcomodacaoData)
     .select()
     .single();
 
@@ -194,7 +230,13 @@ const createAcomodacao = async (newAcomodacao: AcomodacaoInsert): Promise<Acomod
     console.error("Erro ao criar acomodação:", error);
     throw new Error(`Falha ao criar acomodação: ${error.message}`);
   }
-  return data as Acomodacao;
+  
+  // Sincroniza as comodidades
+  if (comodidadeIds && comodidadeIds.length > 0) {
+      await upsertAcomodacaoComodidades(acomodacao.id, comodidadeIds);
+  }
+  
+  return acomodacao as Acomodacao;
 };
 
 export const useCreateAcomodacao = () => {
@@ -218,9 +260,11 @@ interface UpdateAcomodacaoArgs {
 }
 
 const updateAcomodacao = async ({ id, updates }: UpdateAcomodacaoArgs): Promise<Acomodacao> => {
+  const { comodidadeIds, ...updateAcomodacaoData } = updates;
+  
   const { data, error } = await supabase
     .from("acomodacoes")
-    .update(updates)
+    .update(updateAcomodacaoData)
     .eq("id", id)
     .select()
     .single();
@@ -229,6 +273,12 @@ const updateAcomodacao = async ({ id, updates }: UpdateAcomodacaoArgs): Promise<
     console.error("Erro ao atualizar acomodação:", error);
     throw new Error(`Falha ao atualizar acomodação: ${error.message}`);
   }
+  
+  // Sincroniza as comodidades se o campo foi enviado
+  if (comodidadeIds !== undefined) {
+      await upsertAcomodacaoComodidades(id, comodidadeIds);
+  }
+  
   return data as Acomodacao;
 };
 

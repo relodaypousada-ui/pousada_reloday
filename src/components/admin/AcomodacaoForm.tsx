@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,6 +19,8 @@ import {
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 import { Acomodacao, AcomodacaoInsert, useCreateAcomodacao, useUpdateAcomodacao } from "@/integrations/supabase/acomodacoes";
+import { useAllComodidades } from "@/integrations/supabase/comodidades";
+import { cn } from "@/lib/utils";
 
 // Schema de Validação
 const formSchema = z.object({
@@ -29,6 +33,8 @@ const formSchema = z.object({
   preco: z.coerce.number().min(0.01, "O preço deve ser maior que zero."),
   imagem_url: z.string().url("URL de imagem inválida.").optional().or(z.literal("")),
   is_active: z.boolean().default(true),
+  // Novo campo para as comodidades
+  comodidadeIds: z.array(z.string()).default([]),
 });
 
 interface AcomodacaoFormProps {
@@ -41,6 +47,8 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
   const createMutation = useCreateAcomodacao();
   const updateMutation = useUpdateAcomodacao();
   const isPending = createMutation.isPending || updateMutation.isPending;
+  
+  const { data: allComodidades, isLoading: isLoadingComodidades } = useAllComodidades();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,8 +60,18 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
       preco: initialData?.preco || 0.01,
       imagem_url: initialData?.imagem_url || "",
       is_active: initialData?.is_active ?? true,
+      // Inicializa com os IDs das comodidades existentes
+      comodidadeIds: initialData?.comodidades?.map(c => c.id) || [],
     },
   });
+  
+  // Atualiza os valores iniciais das comodidades se o initialData for carregado depois
+  useEffect(() => {
+    if (initialData && initialData.comodidades) {
+        form.setValue("comodidadeIds", initialData.comodidades.map(c => c.id), { shouldDirty: false });
+    }
+  }, [initialData, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const dataToSubmit: AcomodacaoInsert = {
@@ -63,6 +81,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
         capacidade: Number(values.capacidade),
         descricao: values.descricao || null,
         imagem_url: values.imagem_url || null,
+        comodidadeIds: values.comodidadeIds, // Inclui os IDs das comodidades
     };
 
     if (isEditing && initialData) {
@@ -161,6 +180,69 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
             </FormItem>
           )}
         />
+        
+        {/* Seletor de Comodidades */}
+        <FormField
+          control={form.control}
+          name="comodidadeIds"
+          render={() => (
+            <FormItem>
+              <div className="mb-4">
+                <FormLabel className="text-base">Comodidades</FormLabel>
+                <FormDescription>
+                  Selecione as comodidades disponíveis nesta acomodação.
+                </FormDescription>
+              </div>
+              
+              {isLoadingComodidades ? (
+                <div className="flex items-center text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando comodidades...
+                </div>
+              ) : (
+                <ScrollArea className="h-48 w-full rounded-md border p-4">
+                  {allComodidades?.map((comodidade) => (
+                    <FormField
+                      key={comodidade.id}
+                      control={form.control}
+                      name="comodidadeIds"
+                      render={({ field }) => {
+                        return (
+                          <FormItem
+                            key={comodidade.id}
+                            className="flex flex-row items-start space-x-3 space-y-0 py-1"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(comodidade.id)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([...field.value, comodidade.id])
+                                    : field.onChange(
+                                        field.value?.filter(
+                                          (value) => value !== comodidade.id
+                                        )
+                                      )
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className={cn(
+                                "font-normal cursor-pointer",
+                                field.value?.includes(comodidade.id) ? "text-primary" : "text-foreground"
+                            )}>
+                              {comodidade.nome}
+                            </FormLabel>
+                          </FormItem>
+                        )
+                      }}
+                    />
+                  ))}
+                </ScrollArea>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <FormField
           control={form.control}
