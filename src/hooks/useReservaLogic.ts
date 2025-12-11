@@ -26,6 +26,15 @@ const timeOptions = Array.from({ length: 48 }, (_, i) => {
     return `${String(hours).padStart(2, '0')}:${minutes}`;
 });
 
+// Helper function for robust time string comparison (t1 < t2)
+const isTimeBefore = (t1: string, t2: string): boolean => {
+    const [h1, m1] = t1.split(":").map(Number);
+    const [h2, m2] = t2.split(":").map(Number);
+
+    if (h1 === h2) return m1 < m2;
+    return h1 < h2;
+};
+
 // Helper function to calculate time + 1 hour buffer
 const addOneHour = (time: string): string => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -52,7 +61,8 @@ const getLatestCheckOutTime = (date: Date, blockedRanges: BlockedDateTime[]): st
     
     const latestTime = checkOutsOnThisDay.reduce((latest, current) => {
         if (!current.end_time) return latest;
-        return current.end_time > latest ? current.end_time : latest;
+        // Use isTimeBefore for accurate comparison
+        return isTimeBefore(latest, current.end_time) ? current.end_time : latest;
     }, "00:00");
     
     return latestTime;
@@ -110,7 +120,8 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
     const filteredCheckInTimeOptions = useMemo(() => {
         return timeOptions.map(time => ({
             time,
-            isBlocked: time < earliestCheckInTime,
+            // Use the new robust comparison function
+            isBlocked: isTimeBefore(time, earliestCheckInTime),
         }));
     }, [earliestCheckInTime]);
 
@@ -167,8 +178,6 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         // 3. Verifica se a data é um dia de check-out (partialBlock)
         const isPartialBlock = calendarModifiers.partialBlock?.some(partialDate => isSameDay(date, partialDate));
 
-        // Se for totalmente bloqueada E NÃO for um dia de check-out, desabilita.
-        // Se for um dia de check-out (partialBlock), permitimos a seleção, pois o bloqueio é apenas de horário.
         // Se é dia de check-out, jamais bloquear totalmente
 if (isPartialBlock) {
     return false;
@@ -187,7 +196,8 @@ if (isFullyBlocked) {
     // Validação de horário de check-in
     useEffect(() => {
         if (checkInDate && latestCheckOutTime && checkInTime) {
-            if (checkInTime < earliestCheckInTime) {
+            // Use isTimeBefore for validation
+            if (isTimeBefore(checkInTime, earliestCheckInTime)) {
                 form.setError("check_in_time", {
                     type: "manual",
                     message: `O check-in só é permitido após as ${latestCheckOutTime} (ou seja, a partir das ${earliestCheckInTime}) devido à limpeza.`,
@@ -196,7 +206,8 @@ if (isFullyBlocked) {
                 form.clearErrors("check_in_time");
             }
         } else if (checkInDate && latestCheckOutTime && checkInTime === DEFAULT_CHECK_IN_TIME) {
-            if (DEFAULT_CHECK_IN_TIME < earliestCheckInTime) {
+            // Use isTimeBefore for validation
+            if (isTimeBefore(DEFAULT_CHECK_IN_TIME, earliestCheckInTime)) {
                 form.setError("check_in_time", {
                     type: "manual",
                     message: `O horário padrão de check-in (${DEFAULT_CHECK_IN_TIME}) está bloqueado. Selecione um horário a partir das ${earliestCheckInTime}.`,

@@ -86,16 +86,13 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         numNights,
         valorTotal,
         precoPorNoite,
-        blockedDates,
         latestCheckOutTime,
         earliestCheckInTime,
         filteredCheckInTimeOptions,
         calendarModifiers,
         disabledDates,
-        isDateFullyBlocked,
-        timeOptions,
         DEFAULT_CHECK_IN_TIME,
-        DEFAULT_CHECK_OUT_TIME,
+        isDateFullyBlocked,
     } = useReservaLogic(form);
     
     const checkInDate = form.watch("check_in_date");
@@ -138,8 +135,10 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
             return;
         }
         
-        if (values.check_in_time < earliestCheckInTime) {
-            showError(`O check-in só é permitido a partir das ${earliestCheckInTime} neste dia.`);
+        // Verifica se o horário de check-in está bloqueado
+        const isTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === values.check_in_time)?.isBlocked;
+        if (isTimeBlocked) {
+            showError(`O horário de check-in selecionado (${values.check_in_time}) está bloqueado.`);
             return;
         }
         
@@ -381,6 +380,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
+                                            {/* Usamos timeOptions diretamente aqui, pois não há bloqueio de check-out time */}
                                             {timeOptions.map(time => (
                                                 <SelectItem key={time} value={time}>
                                                     {time}
