@@ -92,6 +92,8 @@ const addOneHour = (time: string): string => {
 // Helper function to check if a date is blocked for check-in (full day block)
 const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boolean => {
     const today = startOfDay(new Date());
+    
+    // Se a data for anterior a hoje, bloqueia.
     if (isBefore(date, today)) return true;
 
     return blockedRanges.some(range => {
@@ -181,20 +183,7 @@ const Reserva: React.FC = () => {
     }));
   }, [latestCheckOutTime]);
   
-  // 3. Função para desabilitar datas no calendário
-  const disabledDates = (date: Date) => {
-      if (!blockedDates) return false;
-      
-      // Se a data for totalmente bloqueada (noite ativa), desabilita.
-      if (isDateFullyBlocked(date, blockedDates)) {
-          return true;
-      }
-      
-      // Se for um dia de check-out, permitimos a seleção, mas o horário será validado.
-      return false;
-  };
-  
-  // 4. Modificadores para estilizar datas bloqueadas (vermelho) e parcialmente bloqueadas (amarelo)
+  // 3. Modificadores para estilizar datas bloqueadas (vermelho) e parcialmente bloqueadas (amarelo)
   const calendarModifiers = useMemo(() => {
       if (!blockedDates) return {};
 
@@ -230,6 +219,23 @@ const Reserva: React.FC = () => {
           partialBlock: partialBlockDates,
       };
   }, [blockedDates]);
+  
+  // 4. Função para desabilitar datas no calendário
+  const disabledDates = (date: Date) => {
+      if (!blockedDates) return false;
+      
+      // Verifica se a data está na lista de datas totalmente bloqueadas (gerada no useMemo)
+      const isFullyBlocked = calendarModifiers.blocked?.some(blockedDate => isSameDay(date, blockedDate));
+      
+      // Desabilita se for totalmente bloqueada ou se for anterior a hoje.
+      const today = startOfDay(new Date());
+      if (isBefore(date, today) || isFullyBlocked) {
+          return true;
+      }
+      
+      // Se for um dia de check-out (partialBlock), permitimos a seleção.
+      return false;
+  };
   
   // 5. Validação de horário de check-in
   useEffect(() => {
@@ -284,8 +290,8 @@ const Reserva: React.FC = () => {
     
     // Verificação final de datas bloqueadas antes de submeter
     if (blockedDates) {
-        // 1. Verifica se o dia de check-in está totalmente bloqueado
-        if (isDateFullyBlocked(values.check_in_date, blockedDates)) {
+        // 1. Verifica se o dia de check-in está totalmente bloqueado (usando a mesma lógica de desabilitação)
+        if (disabledDates(values.check_in_date)) {
             showError("A data de Check-in selecionada está indisponível.");
             return;
         }
@@ -535,7 +541,7 @@ const Reserva: React.FC = () => {
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 // Desabilita datas antes ou no mesmo dia do check-in, e datas totalmente bloqueadas
-                                disabled={(date) => date <= (checkInDate || new Date()) || isDateFullyBlocked(date, blockedDates || [])}
+                                disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
                                 modifiers={calendarModifiers}
                                 modifiersStyles={calendarStyles}
                                 initialFocus
