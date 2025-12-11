@@ -56,10 +56,15 @@ const addOneHour = (time: string): string => {
     return `${String(newHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
 
-// Helper function to find the latest check-out time on a specific date
-const getLatestCheckOutTime = (date: Date, blockedRanges: BlockedDateTime[]): string | null => {
+/**
+ * Busca o horário de check-out mais tardio que ocorre NO DIA ESPECIFICADO.
+ * @param date O dia que está sendo verificado para check-in.
+ * @param blockedRanges Todas as datas bloqueadas (reservas e bloqueios manuais).
+ * @returns O horário de check-out mais tardio (ex: "11:00") ou null.
+ */
+const getLatestCheckOutTimeOnDay = (date: Date, blockedRanges: BlockedDateTime[]): string | null => {
     const checkOutsOnThisDay = blockedRanges.filter(range => 
-        !range.is_manual && // Only consider reservations
+        !range.is_manual && // Apenas reservas
         range.end_time && 
         isSameDay(parseISO(range.end_date), date)
     );
@@ -68,6 +73,7 @@ const getLatestCheckOutTime = (date: Date, blockedRanges: BlockedDateTime[]): st
         return null;
     }
     
+    // Encontra o horário mais tardio
     const latestTime = checkOutsOnThisDay.reduce((latest, current) => {
         if (!current.end_time) return latest;
         // Se o horário atual for DEPOIS do último registrado, atualiza
@@ -113,17 +119,16 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
     // --- Date/Time Blocking Logic ---
     
+    // 1. Busca o último check-out que ocorre NO DIA DO CHECK-IN
     const latestCheckOutTime = useMemo(() => {
-    if (!checkInDate || !blockedDates) return null;
-
-    // Buscar o checkout do dia anterior
-    const previousDay = new Date(checkInDate);
-    previousDay.setDate(previousDay.getDate() - 1);
-
-    return getLatestCheckOutTime(previousDay, blockedDates);
-}, [checkInDate, blockedDates]);
+        if (!checkInDate || !blockedDates) return null;
+        
+        // Usamos a data de check-in atual para buscar check-outs que ocorrem neste dia
+        return getLatestCheckOutTimeOnDay(checkInDate, blockedDates);
+    }, [checkInDate, blockedDates]);
 
 
+    // 2. Calcula o horário de check-in mais cedo permitido
     const dynamicEarliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : "00:00";
     
     // O horário de check-in permitido é o MAIOR entre o padrão (14:00) e o dinâmico (último check-out + 1h)
@@ -154,17 +159,17 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
             const endLimit = startOfDay(end);
             
          while (isBefore(current, endLimit)) {
-    // ❌ NÃO coloca o dia do checkout como fully blocked
-    if (!isSameDay(current, endLimit)) {
-        fullyBlockedDates.push(current);
-    }
-
+    // Adiciona todas as noites como totalmente bloqueadas
+    fullyBlockedDates.push(current);
     current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
 }
             
+            // Se for uma reserva (não manual) e tiver um horário de check-out, 
+            // o dia do check-out é um bloqueio parcial (disponível após o horário de limpeza)
             if (!range.is_manual && range.end_time) {
                 const checkOutDay = startOfDay(end);
                 
+                // Adiciona apenas se não for um dia totalmente bloqueado (o que só acontece se a reserva for de 0 noites, o que não deve ocorrer)
                 if (!fullyBlockedDates.some(blockedDate => isSameDay(checkOutDay, blockedDate))) {
                     partialBlockDates.push(checkOutDay);
                 }
@@ -193,18 +198,16 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         // 3. Verifica se a data é um dia de check-out (partialBlock)
         const isPartialBlock = calendarModifiers.partialBlock?.some(partialDate => isSameDay(date, partialDate));
 
-        // Se é dia de check-out, jamais bloquear totalmente
-if (isPartialBlock) {
-    return false;
-}
+        // Se é dia de check-out, permitimos a seleção (o bloqueio de horário cuidará do resto)
+        if (isPartialBlock) {
+            return false;
+        }
 
-// Se é totalmente bloqueado, desabilita
-if (isFullyBlocked) {
-    return true;
-}
+        // Se é totalmente bloqueado, desabilita
+        if (isFullyBlocked) {
+            return true;
+        }
         
-        // Se for um dia de check-out (partialBlock), permitimos a seleção.
-        // Se não for bloqueada, também permitimos.
         return false;
     };
     
