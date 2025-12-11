@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Calendar, Users, DollarSign, Home } from "lucide-react";
+import { Loader2, Calendar, Users, DollarSign, Home, Clock } from "lucide-react";
 import { Reserva, ReservaStatus, useUpdateReserva } from "@/integrations/supabase/reservas";
 import ReservaStatusBadge from "./ReservaStatusBadge";
 import { Link } from "react-router-dom";
@@ -123,10 +123,12 @@ const ReservaDetailsDialog: React.FC<ReservaDetailsDialogProps> = ({ open, onOpe
                 <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1" /> Check-in</span>
                     <span className="font-bold text-lg">{formatDate(reserva.check_in_date)}</span>
+                    <span className="text-sm font-medium flex items-center mt-1"><Clock className="h-3 w-3 mr-1" /> {reserva.check_in_time}</span>
                 </div>
                 <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1" /> Check-out</span>
                     <span className="font-bold text-lg">{formatDate(reserva.check_out_date)}</span>
+                    <span className="text-sm font-medium flex items-center mt-1"><Clock className="h-3 w-3 mr-1" /> {reserva.check_out_time}</span>
                 </div>
                 <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground flex items-center"><Users className="h-3 w-3 mr-1" /> Total Hóspedes</span>

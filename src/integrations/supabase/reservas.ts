@@ -11,6 +11,8 @@ export interface Reserva {
   acomodacao_id: string;
   check_in_date: string;
   check_out_date: string;
+  check_in_time: string; // Novo campo
+  check_out_time: string; // Novo campo
   total_hospedes: number;
   valor_total: number;
   status: ReservaStatus;
@@ -25,7 +27,7 @@ export interface Reserva {
 }
 
 export type ReservaInsert = Omit<Reserva, 'id' | 'created_at' | 'status' | 'acomodacoes' | 'profiles'>;
-export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'total_hospedes' | 'valor_total'>>;
+export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'check_in_time' | 'check_out_time' | 'total_hospedes' | 'valor_total'>>;
 
 // New type for date ranges
 export interface DateRange {

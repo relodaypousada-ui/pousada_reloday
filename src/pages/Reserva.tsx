@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar as CalendarIcon, Loader2, Users, Home, DollarSign, LogIn, ShieldAlert } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Users, Home, DollarSign, LogIn, ShieldAlert, Clock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,18 @@ import { useAllAcomodacoes } from "@/integrations/supabase/acomodacoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReservaInsert, useCreateReserva, useBlockedDates, DateRange } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
+
+// Horários padrão
+const DEFAULT_CHECK_IN_TIME = "14:00";
+const DEFAULT_CHECK_OUT_TIME = "11:00";
+
+// Lista de horários para seleção (a cada 30 minutos)
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+    const hours = Math.floor(i / 2);
+    const minutes = i % 2 === 0 ? '00' : '30';
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+});
+
 
 // Schema de Validação
 const formSchema = z.object({
@@ -35,6 +47,8 @@ const formSchema = z.object({
   check_out_date: z.date({
     required_error: "Data de Check-out é obrigatória.",
   }),
+  check_in_time: z.string().min(1, "Horário de Check-in é obrigatório."),
+  check_out_time: z.string().min(1, "Horário de Check-out é obrigatório."),
   total_hospedes: z.coerce.number().min(1, "Mínimo de 1 hóspede."),
 }).refine((data) => differenceInDays(data.check_out_date, data.check_in_date) >= 1, {
     message: "O Check-out deve ser pelo menos 1 dia após o Check-in.",
@@ -77,6 +91,8 @@ const Reserva: React.FC = () => {
     defaultValues: {
       acomodacao_id: "",
       total_hospedes: 1,
+      check_in_time: DEFAULT_CHECK_IN_TIME, // Valor padrão
+      check_out_time: DEFAULT_CHECK_OUT_TIME, // Valor padrão
     },
   });
   
@@ -159,6 +175,8 @@ const Reserva: React.FC = () => {
         acomodacao_id: values.acomodacao_id,
         check_in_date: format(values.check_in_date, 'yyyy-MM-dd'),
         check_out_date: format(values.check_out_date, 'yyyy-MM-dd'),
+        check_in_time: values.check_in_time, // Novo campo
+        check_out_time: values.check_out_time, // Novo campo
         total_hospedes: values.total_hospedes,
         valor_total: valorTotal,
     };
@@ -168,6 +186,8 @@ const Reserva: React.FC = () => {
             form.reset({
                 acomodacao_id: selectedAcomodacaoId, // Mantém a acomodação selecionada
                 total_hospedes: 1,
+                check_in_time: DEFAULT_CHECK_IN_TIME,
+                check_out_time: DEFAULT_CHECK_OUT_TIME,
             });
             navigate("/acompanhar-reserva");
         },
@@ -249,91 +269,146 @@ const Reserva: React.FC = () => {
                 )}
               />
 
-              {/* 2. Datas */}
+              {/* 2. Datas e Horários */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="check_in_date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="flex items-center"><CalendarIcon className="h-4 w-4 mr-2" /> Check-in</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={isPending || !selectedAcomodacaoId || isAdmin}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: ptBR })
-                              ) : (
-                                <span>Selecione a data</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={disabledDates} // Aplica datas bloqueadas
-                            initialFocus
-                            locale={ptBR}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="check_out_date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="flex items-center"><CalendarIcon className="h-4 w-4 mr-2" /> Check-out</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={isPending || !checkInDate || isAdmin}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: ptBR })
-                              ) : (
-                                <span>Selecione a data</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            // Desabilita datas antes ou no mesmo dia do check-in, e datas bloqueadas
-                            disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
-                            initialFocus
-                            locale={ptBR}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Check-in */}
+                <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="check_in_date"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel className="flex items-center"><CalendarIcon className="h-4 w-4 mr-2" /> Check-in</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                  disabled={isPending || !selectedAcomodacaoId || isAdmin}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP", { locale: ptBR })
+                                  ) : (
+                                    <span>Selecione a data</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={disabledDates} // Aplica datas bloqueadas
+                                initialFocus
+                                locale={ptBR}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="check_in_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Entrada</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o horário" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {timeOptions.map(time => (
+                                <SelectItem key={time} value={time}>
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </div>
+                
+                {/* Check-out */}
+                <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="check_out_date"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel className="flex items-center"><CalendarIcon className="h-4 w-4 mr-2" /> Check-out</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                  disabled={isPending || !checkInDate || isAdmin}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP", { locale: ptBR })
+                                  ) : (
+                                    <span>Selecione a data</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                // Desabilita datas antes ou no mesmo dia do check-in, e datas bloqueadas
+                                disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
+                                initialFocus
+                                locale={ptBR}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="check_out_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Saída</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o horário" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {timeOptions.map(time => (
+                                <SelectItem key={time} value={time}>
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </div>
               </div>
               
               {/* Mensagem de Carregamento de Disponibilidade */}
