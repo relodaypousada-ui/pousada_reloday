@@ -105,6 +105,18 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
             form.setValue("acomodacao_id", initialAcomodacaoId, { shouldValidate: true });
         }
     }, [initialAcomodacaoId, form]);
+    
+    // Efeito para ajustar o horário de check-in se o padrão estiver bloqueado
+    useEffect(() => {
+        if (checkInDate && latestCheckOutTime && earliestCheckInTime) {
+            const isDefaultTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === DEFAULT_CHECK_IN_TIME)?.isBlocked;
+            
+            // Se o horário padrão estiver bloqueado, force a seleção do horário mais cedo disponível
+            if (isDefaultTimeBlocked) {
+                form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
+            }
+        }
+    }, [checkInDate, latestCheckOutTime, earliestCheckInTime, filteredCheckInTimeOptions, form]);
 
 
     async function onSubmit(values: ReservaFormValues) {
