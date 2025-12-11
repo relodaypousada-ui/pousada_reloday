@@ -76,6 +76,19 @@ const getLatestCheckOutTime = (date: Date, blockedRanges: BlockedDateTime[]): st
     return latestTime;
 };
 
+// Helper function to calculate time + 1 hour buffer
+const addOneHour = (time: string): string => {
+    const [hours, minutes] = time.split(':').map(Number);
+    let newHours = hours + 1;
+    
+    // Handle time string overflow (e.g., 23:30 + 1 hour = 00:30 next day)
+    if (newHours >= 24) {
+        newHours -= 24;
+    }
+    
+    return `${String(newHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 // Helper function to check if a date is blocked for check-in (full day block)
 const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boolean => {
     const today = startOfDay(new Date());
@@ -158,10 +171,13 @@ const Reserva: React.FC = () => {
         return timeOptions.map(time => ({ time, isBlocked: false }));
     }
     
-    // Se houver um check-out no dia, bloqueia horários ANTES ou IGUAIS ao último check-out.
+    // Calcula o horário de check-in mais cedo permitido (latestCheckOutTime + 1 hora de limpeza)
+    const earliestCheckInTime = addOneHour(latestCheckOutTime);
+
+    // Bloqueia horários ANTES do horário de check-in mais cedo permitido.
     return timeOptions.map(time => ({
         time,
-        isBlocked: time <= latestCheckOutTime,
+        isBlocked: time < earliestCheckInTime,
     }));
   }, [latestCheckOutTime]);
   
@@ -218,21 +234,25 @@ const Reserva: React.FC = () => {
   // 5. Validação de horário de check-in
   useEffect(() => {
       if (checkInDate && latestCheckOutTime && checkInTime) {
+          const earliestCheckInTime = addOneHour(latestCheckOutTime);
+          
           // Se o horário selecionado for bloqueado, limpa o campo e mostra erro
-          if (checkInTime <= latestCheckOutTime) {
+          if (checkInTime < earliestCheckInTime) {
               form.setError("check_in_time", {
                   type: "manual",
-                  message: `O check-in só é permitido após as ${latestCheckOutTime} devido a um check-out anterior.`,
+                  message: `O check-in só é permitido após as ${latestCheckOutTime} (ou seja, a partir das ${earliestCheckInTime}) devido à limpeza.`,
               });
           } else {
               form.clearErrors("check_in_time");
           }
       } else if (checkInDate && latestCheckOutTime && checkInTime === DEFAULT_CHECK_IN_TIME) {
+          const earliestCheckInTime = addOneHour(latestCheckOutTime);
+          
           // Se o horário padrão for bloqueado, mostra erro
-          if (DEFAULT_CHECK_IN_TIME <= latestCheckOutTime) {
+          if (DEFAULT_CHECK_IN_TIME < earliestCheckInTime) {
               form.setError("check_in_time", {
                   type: "manual",
-                  message: `O horário padrão de check-in (${DEFAULT_CHECK_IN_TIME}) está bloqueado. Selecione um horário após as ${latestCheckOutTime}.`,
+                  message: `O horário padrão de check-in (${DEFAULT_CHECK_IN_TIME}) está bloqueado. Selecione um horário a partir das ${earliestCheckInTime}.`,
               });
           }
       } else {
@@ -271,8 +291,9 @@ const Reserva: React.FC = () => {
         }
         
         // 2. Verifica se o horário de check-in é válido para o dia
-        if (latestCheckOutTime && values.check_in_time <= latestCheckOutTime) {
-            showError(`O check-in só é permitido após as ${latestCheckOutTime} neste dia.`);
+        const earliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : "00:00";
+        if (values.check_in_date && latestCheckOutTime && values.check_in_time < earliestCheckInTime) {
+            showError(`O check-in só é permitido a partir das ${earliestCheckInTime} neste dia.`);
             return;
         }
         
@@ -472,7 +493,7 @@ const Reserva: React.FC = () => {
                           <p className="text-xs text-muted-foreground">Horário padrão de check-in: {DEFAULT_CHECK_IN_TIME}.</p>
                           {latestCheckOutTime && checkInDate && (
                               <p className="text-xs text-yellow-700 font-medium">
-                                  Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}.
+                                  Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}. Check-in liberado a partir de {addOneHour(latestCheckOutTime)}.
                               </p>
                           )}
                         </FormItem>
