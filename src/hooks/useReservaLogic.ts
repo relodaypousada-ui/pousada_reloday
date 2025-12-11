@@ -17,8 +17,12 @@ const formSchema = z.object({
 });
 type ReservaFormValues = z.infer<typeof formSchema>;
 
-export const DEFAULT_CHECK_IN_TIME = "14:00";
+// Horário padrão de check-in (usado para preenchimento inicial do formulário)
+export const STANDARD_CHECK_IN_TIME = "14:00"; 
 export const DEFAULT_CHECK_OUT_TIME = "11:00";
+
+// Horário mais cedo permitido para check-in quando o quarto está vago (ex: 08:00)
+export const EARLIEST_VACANT_CHECK_IN_TIME = "08:00"; 
 
 export const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const hours = Math.floor(i / 2);
@@ -123,7 +127,7 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
     const { data: blockedDates, isLoading: isLoadingBlockedDates } = useBlockedDates(selectedAcomodacaoId);
 
-    // **NOVO:** Obtém o buffer de limpeza da acomodação ou usa o valor padrão (1.0h)
+    // Obtém o buffer de limpeza da acomodação ou usa o valor padrão (1.0h)
     const cleaningBufferHours = selectedAcomodacao?.cleaning_buffer_hours ?? 1.0; 
 
     // --- Price and Nights Calculation ---
@@ -144,14 +148,14 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
     // 2. Calcula o horário de check-in mais cedo permitido
     const dynamicEarliestCheckInTime = latestCheckOutTime 
-        ? addVariableBuffer(latestCheckOutTime, cleaningBufferHours) // <-- Usa a variável da acomodação
+        ? addVariableBuffer(latestCheckOutTime, cleaningBufferHours) // Usa a variável da acomodação
         : null;
     
     // Se houver um check-out no dia, o horário de check-in é o dinâmico.
-    // Se não houver, usa o padrão (14:00).
+    // SE NÃO HOUVER, usa o horário mais cedo permitido (08:00).
     const earliestCheckInTime = dynamicEarliestCheckInTime 
         ? dynamicEarliestCheckInTime 
-        : DEFAULT_CHECK_IN_TIME;
+        : EARLIEST_VACANT_CHECK_IN_TIME; // <-- ALTERADO: Permite check-in a partir de 08:00 se o quarto estiver vago.
 
 
     const filteredCheckInTimeOptions = useMemo(() => {
@@ -240,7 +244,7 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
                     const formattedBuffer = formatBufferHours(cleaningBufferHours);
                     message = `Check-out anterior em ${format(checkInDate, "PPP", { locale: ptBR })} às ${latestCheckOutTime}. É necessário um buffer de limpeza de ${formattedBuffer}. Check-in liberado a partir de ${earliestCheckInTime}.`;
                 } else {
-                    message = `O check-in só é permitido a partir do horário padrão (${DEFAULT_CHECK_IN_TIME}).`;
+                    message = `O check-in só é permitido a partir do horário mais cedo disponível (${EARLIEST_VACANT_CHECK_IN_TIME}).`;
                 }
                 
                 form.setError("check_in_time", {

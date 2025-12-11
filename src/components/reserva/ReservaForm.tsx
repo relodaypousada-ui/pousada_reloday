@@ -23,7 +23,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReservaInsert, useCreateReserva } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
-import { useReservaLogic, timeOptions, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatBufferHours } from "@/hooks/useReservaLogic";
+import { useReservaLogic, timeOptions, STANDARD_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatBufferHours } from "@/hooks/useReservaLogic";
 import ReservaSummary from "./ReservaSummary";
 
 
@@ -74,7 +74,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         defaultValues: {
             acomodacao_id: initialAcomodacaoId || "",
             total_hospedes: 1,
-            check_in_time: DEFAULT_CHECK_IN_TIME,
+            check_in_time: STANDARD_CHECK_IN_TIME, // Usando o padrão 14:00 como valor inicial
             check_out_time: DEFAULT_CHECK_OUT_TIME,
         },
     });
@@ -110,10 +110,17 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
     // Efeito para ajustar o horário de check-in se o padrão estiver bloqueado
     useEffect(() => {
         if (checkInDate && earliestCheckInTime) {
-            const isDefaultTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === DEFAULT_CHECK_IN_TIME)?.isBlocked;
+            const isStandardTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === STANDARD_CHECK_IN_TIME)?.isBlocked;
             
-            // Se o horário padrão estiver bloqueado, force a seleção do horário mais cedo disponível
-            if (isDefaultTimeBlocked) {
+            // Se o horário padrão (14:00) estiver bloqueado, force a seleção do horário mais cedo disponível
+            // Ou se o horário mais cedo disponível for ANTES do padrão (ex: 08:00), mas o formulário ainda está em 14:00, não faz nada.
+            // Apenas ajustamos se o horário selecionado for inválido.
+            
+            // Se o horário mais cedo permitido for ANTES do padrão (ex: 08:00), e o usuário não selecionou nada, 
+            // mantemos 14:00 como default, mas permitimos a seleção de 08:00.
+            
+            // Se o horário mais cedo permitido for DEPOIS do padrão (ex: 15:00), forçamos o ajuste.
+            if (isTimeBefore(STANDARD_CHECK_IN_TIME, earliestCheckInTime)) {
                 form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
             }
         }
@@ -185,7 +192,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                 form.reset({
                     acomodacao_id: selectedAcomodacaoId,
                     total_hospedes: 1,
-                    check_in_time: DEFAULT_CHECK_IN_TIME,
+                    check_in_time: STANDARD_CHECK_IN_TIME,
                     check_out_time: DEFAULT_CHECK_OUT_TIME,
                 });
                 navigate("/acompanhar-reserva");
@@ -324,7 +331,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
-                                    <p className="text-xs text-muted-foreground">Horário padrão de check-in: {DEFAULT_CHECK_IN_TIME}.</p>
+                                    <p className="text-xs text-muted-foreground">Horário padrão de check-in: {STANDARD_CHECK_IN_TIME}.</p>
                                     {latestCheckOutTime && checkInDate && (
                                         <p className="text-xs text-yellow-700 font-medium">
                                             Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}. Buffer de limpeza de {formatBufferHours(cleaningBufferHours)}. Check-in liberado a partir de {earliestCheckInTime}.
