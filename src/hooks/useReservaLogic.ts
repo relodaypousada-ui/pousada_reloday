@@ -158,13 +158,13 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         const isPartialBlock = calendarModifiers.partialBlock?.some(partialDate => isSameDay(date, partialDate));
 
         // Se for totalmente bloqueada E NÃO for um dia de check-out, desabilita.
-        // No entanto, se a lógica de fullyBlocked estiver correta, um partialBlock nunca deveria ser fullyBlocked.
-        // Vamos confiar na lista 'blocked' para desabilitar.
-        
-        if (isFullyBlocked) {
+        // Se for um dia de check-out (partialBlock), permitimos a seleção, pois o bloqueio é apenas de horário.
+        if (isFullyBlocked && !isPartialBlock) {
             return true;
         }
         
+        // Se for um dia de check-out (partialBlock), permitimos a seleção.
+        // Se não for bloqueada, também permitimos.
         return false;
     };
     
