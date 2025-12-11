@@ -142,12 +142,26 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
     }, [blockedDates]);
 
     const disabledDates = (date: Date) => {
+        const today = startOfDay(new Date());
+        
+        // 1. Desabilita datas passadas
+        if (isBefore(date, today)) {
+            return true;
+        }
+        
         if (!blockedDates) return false;
         
+        // 2. Verifica se a data está na lista de datas totalmente bloqueadas (noites de reserva/bloqueio manual)
         const isFullyBlocked = calendarModifiers.blocked?.some(blockedDate => isSameDay(date, blockedDate));
         
-        const today = startOfDay(new Date());
-        if (isBefore(date, today) || isFullyBlocked) {
+        // 3. Verifica se a data é um dia de check-out (partialBlock)
+        const isPartialBlock = calendarModifiers.partialBlock?.some(partialDate => isSameDay(date, partialDate));
+
+        // Se for totalmente bloqueada E NÃO for um dia de check-out, desabilita.
+        // No entanto, se a lógica de fullyBlocked estiver correta, um partialBlock nunca deveria ser fullyBlocked.
+        // Vamos confiar na lista 'blocked' para desabilitar.
+        
+        if (isFullyBlocked) {
             return true;
         }
         
