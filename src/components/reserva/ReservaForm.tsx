@@ -23,7 +23,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReservaInsert, useCreateReserva } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
-import { useReservaLogic } from "@/hooks/useReservaLogic";
+import { useReservaLogic, timeOptions } from "@/hooks/useReservaLogic";
 import ReservaSummary from "./ReservaSummary";
 
 // Schema de Validação
