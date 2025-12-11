@@ -20,6 +20,10 @@ type ReservaFormValues = z.infer<typeof formSchema>;
 export const DEFAULT_CHECK_IN_TIME = "14:00";
 export const DEFAULT_CHECK_OUT_TIME = "11:00";
 
+// **SIMULAÇÃO DE CONFIGURAÇÃO ADMIN:** Buffer de limpeza em horas. 
+// Em produção, este valor deve ser buscado de configurações globais ou da acomodação.
+const CHECK_IN_CLEANING_BUFFER_HOURS = 1.0; 
+
 export const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const hours = Math.floor(i / 2);
     const minutes = i % 2 === 0 ? '00' : '30';
@@ -44,16 +48,27 @@ const isTimeAfter = (t1: string, t2: string): boolean => {
     return h1 > h2;
 };
 
-// Helper function to calculate time + 1 hour buffer
-const addOneHour = (time: string): string => {
-    const [hours, minutes] = time.split(':').map(Number);
-    let newHours = hours + 1;
+/**
+ * Adiciona um número de horas (pode ser decimal, ex: 1.5 para 1h 30m) a um horário (string "HH:mm").
+ * @param time Horário base.
+ * @param bufferHours Horas a adicionar (ex: 1 para 1h, 1.5 para 1h30m).
+ * @returns Novo horário (string "HH:mm").
+ */
+const addVariableBuffer = (time: string, bufferHours: number): string => {
+    const [h, m] = time.split(':').map(Number);
     
-    if (newHours >= 24) {
-        newHours -= 24;
-    }
+    // Converte tudo para minutos
+    let totalMinutes = h * 60 + m;
     
-    return `${String(newHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    // Adiciona o buffer em minutos (arredonda para o minuto mais próximo)
+    const bufferMinutes = Math.round(bufferHours * 60);
+    totalMinutes += bufferMinutes;
+
+    // Converte de volta para horas e minutos (24h)
+    const newHours = Math.floor(totalMinutes / 60) % 24; 
+    const newMinutes = totalMinutes % 60;
+    
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
 };
 
 /**
@@ -129,7 +144,9 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
 
     // 2. Calcula o horário de check-in mais cedo permitido
-    const dynamicEarliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : null;
+    const dynamicEarliestCheckInTime = latestCheckOutTime 
+        ? addVariableBuffer(latestCheckOutTime, CHECK_IN_CLEANING_BUFFER_HOURS) 
+        : null;
     
     // Se houver um check-out no dia, o horário de check-in é o dinâmico.
     // Se não houver check-out no dia, o horário de check-in é o padrão (14:00).
