@@ -17,8 +17,8 @@ const formSchema = z.object({
 });
 type ReservaFormValues = z.infer<typeof formSchema>;
 
-const DEFAULT_CHECK_IN_TIME = "14:00";
-const DEFAULT_CHECK_OUT_TIME = "11:00";
+export const DEFAULT_CHECK_IN_TIME = "14:00";
+export const DEFAULT_CHECK_OUT_TIME = "11:00";
 
 export const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const hours = Math.floor(i / 2);
@@ -233,8 +233,6 @@ if (isFullyBlocked) {
         filteredCheckInTimeOptions,
         calendarModifiers,
         disabledDates,
-        DEFAULT_CHECK_IN_TIME,
-        DEFAULT_CHECK_OUT_TIME,
         isDateFullyBlocked: (date: Date) => isDateFullyBlocked(date, blockedDates || []),
     };
 };

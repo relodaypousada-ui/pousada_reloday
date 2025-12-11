@@ -23,8 +23,9 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReservaInsert, useCreateReserva } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
-import { useReservaLogic, timeOptions } from "@/hooks/useReservaLogic";
+import { useReservaLogic, timeOptions, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from "@/hooks/useReservaLogic";
 import ReservaSummary from "./ReservaSummary";
+
 
 // Schema de Validação
 const formSchema = z.object({
@@ -73,8 +74,8 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         defaultValues: {
             acomodacao_id: initialAcomodacaoId || "",
             total_hospedes: 1,
-            check_in_time: "14:00",
-            check_out_time: "11:00",
+            check_in_time: DEFAULT_CHECK_IN_TIME,
+            check_out_time: DEFAULT_CHECK_OUT_TIME,
         },
     });
 
@@ -91,7 +92,6 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         filteredCheckInTimeOptions,
         calendarModifiers,
         disabledDates,
-        DEFAULT_CHECK_IN_TIME,
         isDateFullyBlocked,
     } = useReservaLogic(form);
     
