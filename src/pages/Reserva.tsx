@@ -517,8 +517,8 @@ const Reserva: React.FC = () => {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                // Desabilita datas antes ou no mesmo dia do check-in, e datas bloqueadas
-                                disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
+                                // Desabilita datas antes ou no mesmo dia do check-in, e datas totalmente bloqueadas
+                                disabled={(date) => date <= (checkInDate || new Date()) || isDateFullyBlocked(date, blockedDates || [])}
                                 modifiers={calendarModifiers}
                                 modifiersStyles={calendarStyles}
                                 initialFocus
