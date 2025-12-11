@@ -24,6 +24,7 @@ export interface Acomodacao {
   preco: number;
   imagem_url: string | null;
   is_active: boolean; // Adicionando is_active para o admin
+  cleaning_buffer_hours: number; // NOVO CAMPO: Buffer de limpeza em horas (ex: 1.0, 1.5)
   // Novos campos para detalhes
   midia?: AcomodacaoMidia[];
   comodidades?: Comodidade[];
@@ -40,7 +41,7 @@ export type AcomodacaoUpdate = Partial<AcomodacaoInsert>;
 const getAllAcomodacoes = async (): Promise<Acomodacao[]> => {
   const { data, error } = await supabase
     .from("acomodacoes")
-    .select("id, titulo, slug, descricao, capacidade, preco, imagem_url")
+    .select("id, titulo, slug, descricao, capacidade, preco, imagem_url, cleaning_buffer_hours")
     .eq("is_active", true)
     .order("titulo", { ascending: true });
 
@@ -56,7 +57,7 @@ const getAllAcomodacoes = async (): Promise<Acomodacao[]> => {
 const getAdminAcomodacoes = async (): Promise<Acomodacao[]> => {
   const { data, error } = await supabase
     .from("acomodacoes")
-    .select("*") // Seleciona todos os campos, incluindo is_active
+    .select("*") // Seleciona todos os campos, incluindo is_active e cleaning_buffer_hours
     .order("titulo", { ascending: true });
 
   if (error) {
@@ -176,7 +177,7 @@ export const useFeaturedAcomodacoes = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("acomodacoes")
-        .select("id, titulo, slug, descricao, capacidade, preco, imagem_url")
+        .select("id, titulo, slug, descricao, capacidade, preco, imagem_url, cleaning_buffer_hours")
         .eq("is_active", true)
         .limit(3)
         .order("created_at", { ascending: false });

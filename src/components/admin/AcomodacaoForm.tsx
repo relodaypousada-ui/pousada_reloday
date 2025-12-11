@@ -37,6 +37,7 @@ const formSchema = z.object({
   preco: z.coerce.number().min(0.01, "O preço deve ser maior que zero."),
   imagem_url: z.string().url("URL de imagem inválida.").optional().or(z.literal("")),
   is_active: z.boolean().default(true),
+  cleaning_buffer_hours: z.coerce.number().min(0, "O buffer deve ser um número positivo."), // NOVO CAMPO
   comodidadeIds: z.array(z.string()).default([]),
 });
 
@@ -71,6 +72,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
       preco: currentAcomodacao?.preco || 0.01,
       imagem_url: currentAcomodacao?.imagem_url || "",
       is_active: currentAcomodacao?.is_active ?? true,
+      cleaning_buffer_hours: currentAcomodacao?.cleaning_buffer_hours || 1.0, // Valor padrão 1.0
       comodidadeIds: currentAcomodacao?.comodidades?.map(c => c.id) || [],
     },
     values: { // Usamos 'values' para sincronizar o formulário com os dados do React Query
@@ -81,6 +83,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
         preco: currentAcomodacao?.preco || 0.01,
         imagem_url: currentAcomodacao?.imagem_url || "",
         is_active: currentAcomodacao?.is_active ?? true,
+        cleaning_buffer_hours: currentAcomodacao?.cleaning_buffer_hours || 1.0,
         comodidadeIds: currentAcomodacao?.comodidades?.map(c => c.id) || [],
     },
     resetOptions: {
@@ -111,6 +114,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
         ...values,
         preco: Number(values.preco), 
         capacidade: Number(values.capacidade),
+        cleaning_buffer_hours: Number(values.cleaning_buffer_hours), // Incluindo o buffer
         descricao: values.descricao || null,
         imagem_url: values.imagem_url || null,
         comodidadeIds: values.comodidadeIds,
@@ -182,7 +186,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
           )}
         />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="capacidade"
@@ -205,6 +209,22 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
                         <FormControl>
                             <Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                         </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="cleaning_buffer_hours"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Buffer de Limpeza (Horas)</FormLabel>
+                        <FormControl>
+                            <Input type="number" step="0.1" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                        </FormControl>
+                        <FormDescription>
+                            Tempo necessário entre o check-out e o próximo check-in (ex: 1.5 para 1h 30m).
+                        </FormDescription>
                         <FormMessage />
                     </FormItem>
                 )}

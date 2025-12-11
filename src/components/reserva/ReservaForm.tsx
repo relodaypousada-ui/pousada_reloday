@@ -23,7 +23,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReservaInsert, useCreateReserva } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
-import { useReservaLogic, timeOptions, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from "@/hooks/useReservaLogic";
+import { useReservaLogic, timeOptions, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatBufferHours } from "@/hooks/useReservaLogic";
 import ReservaSummary from "./ReservaSummary";
 
 
@@ -89,6 +89,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         precoPorNoite,
         latestCheckOutTime,
         earliestCheckInTime,
+        cleaningBufferHours, // Novo
         filteredCheckInTimeOptions,
         calendarModifiers,
         disabledDates,
@@ -150,6 +151,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         // Verifica se o horário de check-in está bloqueado
         const isTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === values.check_in_time)?.isBlocked;
         if (isTimeBlocked) {
+            // O erro detalhado já está no form.formState.errors.check_in_time.message
             showError(`O horário de check-in selecionado (${values.check_in_time}) está bloqueado.`);
             return;
         }
@@ -325,7 +327,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                     <p className="text-xs text-muted-foreground">Horário padrão de check-in: {DEFAULT_CHECK_IN_TIME}.</p>
                                     {latestCheckOutTime && checkInDate && (
                                         <p className="text-xs text-yellow-700 font-medium">
-                                            Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}. Check-in liberado a partir de {earliestCheckInTime}.
+                                            Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}. Buffer de limpeza de {formatBufferHours(cleaningBufferHours)}. Check-in liberado a partir de {earliestCheckInTime}.
                                         </p>
                                     )}
                                 </FormItem>

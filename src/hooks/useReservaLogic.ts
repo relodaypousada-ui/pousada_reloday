@@ -20,10 +20,6 @@ type ReservaFormValues = z.infer<typeof formSchema>;
 export const DEFAULT_CHECK_IN_TIME = "14:00";
 export const DEFAULT_CHECK_OUT_TIME = "11:00";
 
-// **SIMULAÇÃO DE CONFIGURAÇÃO ADMIN:** Buffer de limpeza em horas. 
-// Em produção, este valor deve ser buscado de configurações globais ou da acomodação.
-const CHECK_IN_CLEANING_BUFFER_HOURS = 1.0; 
-
 export const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const hours = Math.floor(i / 2);
     const minutes = i % 2 === 0 ? '00' : '30';
@@ -127,6 +123,9 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
     const { data: blockedDates, isLoading: isLoadingBlockedDates } = useBlockedDates(selectedAcomodacaoId);
 
+    // **NOVO:** Obtém o buffer de limpeza da acomodação ou usa o valor padrão (1.0h)
+    const cleaningBufferHours = selectedAcomodacao?.cleaning_buffer_hours ?? 1.0; 
+
     // --- Price and Nights Calculation ---
     const numNights = checkInDate && checkOutDate ? differenceInDays(checkOutDate, checkInDate) : 0;
     const precoPorNoite = selectedAcomodacao?.preco || 0;
@@ -145,11 +144,11 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
     // 2. Calcula o horário de check-in mais cedo permitido
     const dynamicEarliestCheckInTime = latestCheckOutTime 
-        ? addVariableBuffer(latestCheckOutTime, CHECK_IN_CLEANING_BUFFER_HOURS) 
+        ? addVariableBuffer(latestCheckOutTime, cleaningBufferHours) // <-- Usa a variável da acomodação
         : null;
     
     // Se houver um check-out no dia, o horário de check-in é o dinâmico.
-    // Se não houver check-out no dia, o horário de check-in é o padrão (14:00).
+    // Se não houver, usa o padrão (14:00).
     const earliestCheckInTime = dynamicEarliestCheckInTime 
         ? dynamicEarliestCheckInTime 
         : DEFAULT_CHECK_IN_TIME;
@@ -234,9 +233,19 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         if (checkInDate && checkInTime) {
             // Se o horário selecionado for anterior ao horário permitido (earliestCheckInTime)
             if (isTimeBefore(checkInTime, earliestCheckInTime)) {
+                
+                let message = `O check-in só é permitido a partir das ${earliestCheckInTime}.`;
+                
+                if (latestCheckOutTime) {
+                    const formattedBuffer = formatBufferHours(cleaningBufferHours);
+                    message = `Check-out anterior em ${format(checkInDate, "PPP", { locale: ptBR })} às ${latestCheckOutTime}. É necessário um buffer de limpeza de ${formattedBuffer}. Check-in liberado a partir de ${earliestCheckInTime}.`;
+                } else {
+                    message = `O check-in só é permitido a partir do horário padrão (${DEFAULT_CHECK_IN_TIME}).`;
+                }
+                
                 form.setError("check_in_time", {
                     type: "manual",
-                    message: `O check-in só é permitido a partir das ${earliestCheckInTime} devido à limpeza.`,
+                    message: message,
                 });
             } else {
                 form.clearErrors("check_in_time");
@@ -244,7 +253,7 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         } else {
             form.clearErrors("check_in_time");
         }
-    }, [checkInDate, checkInTime, form, earliestCheckInTime]);
+    }, [checkInDate, checkInTime, form, earliestCheckInTime, latestCheckOutTime, cleaningBufferHours]);
 
 
     return {
@@ -258,9 +267,24 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         blockedDates,
         latestCheckOutTime,
         earliestCheckInTime,
+        cleaningBufferHours, // Exporta o buffer
         filteredCheckInTimeOptions,
         calendarModifiers,
         disabledDates,
         isDateFullyBlocked: (date: Date) => isDateFullyBlocked(date, blockedDates || []),
     };
+};
+
+/**
+ * Converte horas decimais (ex: 1.5) para formato legível (ex: "1h 30m").
+ */
+export const formatBufferHours = (hours: number): string => {
+    const totalMinutes = Math.round(hours * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h} hora${h > 1 ? 's' : ''}`;
+    if (m > 0) return `${m} minutos`;
+    return "0 minutos";
 };
