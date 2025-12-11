@@ -1,12 +1,16 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAcomodacaoBySlug } from "@/integrations/supabase/acomodacoes";
-import { Loader2, Users, DollarSign, ArrowLeft, ImageOff } from "lucide-react";
+import { Loader2, Users, DollarSign, ArrowLeft, ImageOff, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import AmenityList from "@/components/AmenityList";
 import ImageGalleryCarousel from "@/components/ImageGalleryCarousel"; // Novo Import
 import VideoCard from "@/components/VideoCard"; // Novo Import
+
+// Horários padrão (devem ser consistentes com src/pages/Reserva.tsx)
+const DEFAULT_CHECK_IN_TIME = "14:00";
+const DEFAULT_CHECK_OUT_TIME = "11:00";
 
 const AcomodacaoDetalhe: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -125,13 +129,15 @@ const AcomodacaoDetalhe: React.FC = () => {
               {precoFormatado} <span className="text-base font-normal text-muted-foreground">/ noite</span>
             </p>
             
-            {/* Placeholder para Formulário de Datas */}
-            <div className="space-y-4 mb-6">
-                <div className="h-12 bg-accent rounded flex items-center justify-center text-sm text-accent-foreground">
-                    Seletor de Datas (Check-in/Check-out)
+            {/* Informações de Horário */}
+            <div className="space-y-2 mb-6 text-sm">
+                <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Check-in Padrão:</span>
+                    <span className="font-semibold text-foreground">{DEFAULT_CHECK_IN_TIME}</span>
                 </div>
-                <div className="h-12 bg-accent rounded flex items-center justify-center text-sm text-accent-foreground">
-                    Seletor de Hóspedes
+                <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Check-out Padrão:</span>
+                    <span className="font-semibold text-foreground">{DEFAULT_CHECK_OUT_TIME}</span>
                 </div>
             </div>
 
