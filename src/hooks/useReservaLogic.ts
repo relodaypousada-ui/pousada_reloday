@@ -95,9 +95,15 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
     // --- Date/Time Blocking Logic ---
     
     const latestCheckOutTime = useMemo(() => {
-        if (!checkInDate || !blockedDates) return null;
-        return getLatestCheckOutTime(checkInDate, blockedDates);
-    }, [checkInDate, blockedDates]);
+    if (!checkInDate || !blockedDates) return null;
+
+    // Buscar o checkout do dia anterior
+    const previousDay = new Date(checkInDate);
+    previousDay.setDate(previousDay.getDate() - 1);
+
+    return getLatestCheckOutTime(previousDay, blockedDates);
+}, [checkInDate, blockedDates]);
+
 
     const earliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : "00:00";
 
@@ -121,10 +127,14 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
             let current = startOfDay(start);
             const endLimit = startOfDay(end);
             
-            while (isBefore(current, endLimit)) {
-                fullyBlockedDates.push(current);
-                current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
-            }
+         while (isBefore(current, endLimit)) {
+    // ❌ NÃO coloca o dia do checkout como fully blocked
+    if (!isSameDay(current, endLimit)) {
+        fullyBlockedDates.push(current);
+    }
+
+    current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+}
             
             if (!range.is_manual && range.end_time) {
                 const checkOutDay = startOfDay(end);
@@ -159,9 +169,15 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
         // Se for totalmente bloqueada E NÃO for um dia de check-out, desabilita.
         // Se for um dia de check-out (partialBlock), permitimos a seleção, pois o bloqueio é apenas de horário.
-        if (isFullyBlocked && !isPartialBlock) {
-            return true;
-        }
+        // Se é dia de check-out, jamais bloquear totalmente
+if (isPartialBlock) {
+    return false;
+}
+
+// Se é totalmente bloqueado, desabilita
+if (isFullyBlocked) {
+    return true;
+}
         
         // Se for um dia de check-out (partialBlock), permitimos a seleção.
         // Se não for bloqueada, também permitimos.
