@@ -93,7 +93,6 @@ const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boole
     });
 };
 
-
 const Reserva: React.FC = () => {
   const { user, isAdmin, isLoading: isLoadingAuth } = useAuth();
   const navigate = useNavigate();
@@ -241,7 +240,6 @@ const Reserva: React.FC = () => {
       }
   }, [checkInDate, latestCheckOutTime, checkInTime, form]);
 
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (isAdmin) {
         showError("Administradores não podem criar reservas através desta interface.");
@@ -290,7 +288,6 @@ const Reserva: React.FC = () => {
             currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // Adiciona 1 dia
         }
     }
-
 
     const reservaData: ReservaInsert = {
         user_id: user.id,
@@ -354,7 +351,6 @@ const Reserva: React.FC = () => {
           borderRadius: '0',
       }
   };
-
 
   return (
     <div className="container py-12 min-h-[60vh] flex justify-center">

@@ -66,7 +66,6 @@ const BloqueioCalendar: React.FC<BloqueioCalendarProps> = ({ acomodacaoId }) => 
       };
   }, [blockedDates]);
 
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
