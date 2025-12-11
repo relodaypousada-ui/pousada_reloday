@@ -17,12 +17,12 @@ const formSchema = z.object({
 });
 type ReservaFormValues = z.infer<typeof formSchema>;
 
-// Horário padrão de check-in (usado para preenchimento inicial do formulário)
-export const STANDARD_CHECK_IN_TIME = "14:00"; 
-export const DEFAULT_CHECK_OUT_TIME = "11:00";
-
-// Horário mais cedo permitido para check-in quando o quarto está vago (ex: 08:00)
-export const EARLIEST_VACANT_CHECK_IN_TIME = "08:00"; 
+// **CONSTANTES DE FALLBACK/PADRÃO**
+// Se a acomodação não tiver configuração, estes são os valores utilizados.
+export const STANDARD_CHECK_IN_TIME_FALLBACK = "14:00"; 
+export const DEFAULT_CHECK_OUT_TIME_FALLBACK = "11:00";
+export const EARLIEST_VACANT_CHECK_IN_TIME_FALLBACK = "08:00"; 
+export const DEFAULT_CLEANING_BUFFER_HOURS = 1.0; // 1 hora de buffer padrão
 
 export const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const hours = Math.floor(i / 2);
@@ -31,7 +31,8 @@ export const timeOptions = Array.from({ length: 48 }, (_, i) => {
 });
 
 // Helper function for robust time string comparison (t1 < t2)
-const isTimeBefore = (t1: string, t2: string): boolean => {
+// CORREÇÃO: EXPORTADO
+export const isTimeBefore = (t1: string, t2: string): boolean => {
     const [h1, m1] = t1.split(":").map(Number);
     const [h2, m2] = t2.split(":").map(Number);
 
@@ -40,7 +41,8 @@ const isTimeBefore = (t1: string, t2: string): boolean => {
 };
 
 // Helper function for robust time string comparison (t1 > t2)
-const isTimeAfter = (t1: string, t2: string): boolean => {
+// CORREÇÃO: EXPORTADO
+export const isTimeAfter = (t1: string, t2: string): boolean => {
     const [h1, m1] = t1.split(":").map(Number);
     const [h2, m2] = t2.split(":").map(Number);
 
@@ -50,11 +52,9 @@ const isTimeAfter = (t1: string, t2: string): boolean => {
 
 /**
  * Adiciona um número de horas (pode ser decimal, ex: 1.5 para 1h 30m) a um horário (string "HH:mm").
- * @param time Horário base.
- * @param bufferHours Horas a adicionar (ex: 1 para 1h, 1.5 para 1h30m).
- * @returns Novo horário (string "HH:mm").
+ * CORREÇÃO: EXPORTADO (Apesar de não ser usado diretamente no Form.tsx, é bom mantê-lo exportado se houver necessidade futura)
  */
-const addVariableBuffer = (time: string, bufferHours: number): string => {
+export const addVariableBuffer = (time: string, bufferHours: number): string => {
     const [h, m] = time.split(':').map(Number);
     
     // Converte tudo para minutos
@@ -72,12 +72,26 @@ const addVariableBuffer = (time: string, bufferHours: number): string => {
 };
 
 /**
- * Busca o horário de check-out mais tardio que ocorre NO DIA ESPECIFICADO.
- * @param date O dia que está sendo verificado para check-in.
- * @param blockedRanges Todas as datas bloqueadas (reservas e bloqueios manuais).
- * @returns O horário de check-out mais tardio (ex: "11:00") ou null.
+ * Converte horas decimais (ex: 1.5) para formato legível (ex: "1h 30m").
+ * CORREÇÃO: EXPORTADO (Usado diretamente no Form.tsx)
  */
-const getLatestCheckOutTimeOnDay = (date: Date, blockedRanges: BlockedDateTime[]): string | null => {
+export const formatBufferHours = (hours: number): string => {
+    const totalMinutes = Math.round(hours * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h} hora${h > 1 ? 's' : ''}`;
+    if (m > 0) return `${m} minutos`;
+    return "0 minutos";
+};
+
+
+/**
+ * Busca o horário de check-out mais tardio que ocorre NO DIA ESPECIFICADO.
+ * CORREÇÃO: EXPORTADO (Mantido como const para alinhamento)
+ */
+export const getLatestCheckOutTimeOnDay = (date: Date, blockedRanges: BlockedDateTime[]): string | null => {
     const checkOutsOnThisDay = blockedRanges.filter(range => 
         !range.is_manual && // Apenas reservas
         range.end_time && 
@@ -99,7 +113,8 @@ const getLatestCheckOutTimeOnDay = (date: Date, blockedRanges: BlockedDateTime[]
 };
 
 // Helper function to check if a date is blocked for check-in (full day block)
-const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boolean => {
+// CORREÇÃO: EXPORTADO (Mantido como const para alinhamento)
+export const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boolean => {
     const today = startOfDay(new Date());
     if (isBefore(date, today)) return true;
 
@@ -127,8 +142,21 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
     const { data: blockedDates, isLoading: isLoadingBlockedDates } = useBlockedDates(selectedAcomodacaoId);
 
-    // Obtém o buffer de limpeza da acomodação ou usa o valor padrão (1.0h)
-    const cleaningBufferHours = selectedAcomodacao?.cleaning_buffer_hours ?? 1.0; 
+    // --- Lógica de Horários Flexíveis ---
+
+    // 1. Horários padrão da acomodação (usando fallback se não configurado)
+    const cleaningBufferHours = selectedAcomodacao?.cleaning_buffer_hours ?? DEFAULT_CLEANING_BUFFER_HOURS; 
+    
+    // Horário mais cedo de check-in quando o quarto está vago.
+    const earliestVacantCheckInTime = selectedAcomodacao?.earliest_check_in_time ?? EARLIEST_VACANT_CHECK_IN_TIME_FALLBACK;
+
+    // Horário de check-in padrão (usado para defaultValues no formulário, ex: 14:00)
+    // Se o check-in padrão for ANTES do mais cedo permitido (earliestVacantCheckInTime), usa o mais cedo permitido.
+    const standardCheckInTime = selectedAcomodacao?.default_check_in_time ?? STANDARD_CHECK_IN_TIME_FALLBACK;
+
+    // Horário de check-out padrão (usado para defaultValues no formulário)
+    const defaultCheckOutTime = selectedAcomodacao?.default_check_out_time ?? DEFAULT_CHECK_OUT_TIME_FALLBACK;
+
 
     // --- Price and Nights Calculation ---
     const numNights = checkInDate && checkOutDate ? differenceInDays(checkOutDate, checkInDate) : 0;
@@ -140,22 +168,20 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
     // 1. Busca o último check-out que ocorre NO DIA DO CHECK-IN
     const latestCheckOutTime = useMemo(() => {
         if (!checkInDate || !blockedDates) return null;
-        
-        // Usamos a data de check-in atual para buscar check-outs que ocorrem neste dia
         return getLatestCheckOutTimeOnDay(checkInDate, blockedDates);
     }, [checkInDate, blockedDates]);
 
 
-    // 2. Calcula o horário de check-in mais cedo permitido
+    // 2. Calcula o horário de check-in mais cedo permitido no dia
     const dynamicEarliestCheckInTime = latestCheckOutTime 
-        ? addVariableBuffer(latestCheckOutTime, cleaningBufferHours) // Usa a variável da acomodação
+        ? addVariableBuffer(latestCheckOutTime, cleaningBufferHours) 
         : null;
     
-    // Se houver um check-out no dia, o horário de check-in é o dinâmico.
-    // SE NÃO HOUVER, usa o horário mais cedo permitido (08:00).
+    // Se houver um check-out no dia, o horário de check-in é o dinâmico (check-out + buffer).
+    // Se não houver, usa o horário mais cedo permitido para o quarto vago (earliestVacantCheckInTime).
     const earliestCheckInTime = dynamicEarliestCheckInTime 
         ? dynamicEarliestCheckInTime 
-        : EARLIEST_VACANT_CHECK_IN_TIME; // <-- ALTERADO: Permite check-in a partir de 08:00 se o quarto estiver vago.
+        : earliestVacantCheckInTime;
 
 
     const filteredCheckInTimeOptions = useMemo(() => {
@@ -179,11 +205,11 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
             let current = startOfDay(start);
             const endLimit = startOfDay(end);
             
-         while (isBefore(current, endLimit)) {
-    // Adiciona todas as noites como totalmente bloqueadas
-    fullyBlockedDates.push(current);
-    current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
-}
+           while (isBefore(current, endLimit)) {
+        // Adiciona todas as noites como totalmente bloqueadas
+        fullyBlockedDates.push(current);
+        current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+        }
             
             // Se for uma reserva (não manual) e tiver um horário de check-out, 
             // o dia do check-out é um bloqueio parcial (disponível após o horário de limpeza)
@@ -244,7 +270,7 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
                     const formattedBuffer = formatBufferHours(cleaningBufferHours);
                     message = `Check-out anterior em ${format(checkInDate, "PPP", { locale: ptBR })} às ${latestCheckOutTime}. É necessário um buffer de limpeza de ${formattedBuffer}. Check-in liberado a partir de ${earliestCheckInTime}.`;
                 } else {
-                    message = `O check-in só é permitido a partir do horário mais cedo disponível (${EARLIEST_VACANT_CHECK_IN_TIME}).`;
+                    message = `O check-in só é permitido a partir do horário mais cedo disponível (${earliestVacantCheckInTime}).`;
                 }
                 
                 form.setError("check_in_time", {
@@ -257,7 +283,7 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         } else {
             form.clearErrors("check_in_time");
         }
-    }, [checkInDate, checkInTime, form, earliestCheckInTime, latestCheckOutTime, cleaningBufferHours]);
+    }, [checkInDate, checkInTime, form, earliestCheckInTime, latestCheckOutTime, cleaningBufferHours, earliestVacantCheckInTime]);
 
 
     return {
@@ -271,24 +297,15 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
         blockedDates,
         latestCheckOutTime,
         earliestCheckInTime,
-        cleaningBufferHours, // Exporta o buffer
+        cleaningBufferHours,
         filteredCheckInTimeOptions,
         calendarModifiers,
         disabledDates,
         isDateFullyBlocked: (date: Date) => isDateFullyBlocked(date, blockedDates || []),
+        
+        // Retornando os horários padrões configuráveis para uso no formulário (defaultValues e mensagens)
+        standardCheckInTime,
+        defaultCheckOutTime,
+        earliestVacantCheckInTime,
     };
-};
-
-/**
- * Converte horas decimais (ex: 1.5) para formato legível (ex: "1h 30m").
- */
-export const formatBufferHours = (hours: number): string => {
-    const totalMinutes = Math.round(hours * 60);
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    
-    if (h > 0 && m > 0) return `${h}h ${m}m`;
-    if (h > 0) return `${h} hora${h > 1 ? 's' : ''}`;
-    if (m > 0) return `${m} minutos`;
-    return "0 minutos";
 };

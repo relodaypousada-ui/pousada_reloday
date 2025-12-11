@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react"; // CORREÇÃO: useMemo importado
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,12 +8,12 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
 } from "@/components/ui/form";
 import { Calendar as CalendarIcon, Loader2, Users, Home, LogIn, ShieldAlert, Clock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,22 +23,27 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReservaInsert, useCreateReserva } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
-import { useReservaLogic, timeOptions, STANDARD_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatBufferHours } from "@/hooks/useReservaLogic";
+
+// CORREÇÃO DE IMPORTS: Importa tudo que é necessário do hook.
+import { 
+    useReservaLogic, 
+    timeOptions, 
+    formatBufferHours,
+    isTimeBefore,
+    STANDARD_CHECK_IN_TIME_FALLBACK, // Usamos fallbacks para o defaultValues inicial
+    DEFAULT_CHECK_OUT_TIME_FALLBACK,
+} from "@/hooks/useReservaLogic";
 import ReservaSummary from "./ReservaSummary";
 
 
 // Schema de Validação
 const formSchema = z.object({
-  acomodacao_id: z.string().min(1, "Selecione uma acomodação."),
-  check_in_date: z.date({
-    required_error: "Data de Check-in é obrigatória.",
-  }),
-  check_out_date: z.date({
-    required_error: "Data de Check-out é obrigatória.",
-  }),
-  check_in_time: z.string().min(1, "Horário de Check-in é obrigatório."),
-  check_out_time: z.string().min(1, "Horário de Check-out é obrigatório."),
-  total_hospedes: z.coerce.number().min(1, "Mínimo de 1 hóspede."),
+    acomodacao_id: z.string().min(1, "Selecione uma acomodação."),
+    check_in_date: z.date({ required_error: "Data de Check-in é obrigatória." }),
+    check_out_date: z.date({ required_error: "Data de Check-out é obrigatória." }),
+    check_in_time: z.string().min(1, "Horário de Check-in é obrigatório."),
+    check_out_time: z.string().min(1, "Horário de Check-out é obrigatório."),
+    total_hospedes: z.coerce.number().min(1, "Mínimo de 1 hóspede."),
 }).refine((data) => data.check_out_date > data.check_in_date, {
     message: "O Check-out deve ser pelo menos 1 dia após o Check-in.",
     path: ["check_out_date"],
@@ -69,38 +74,41 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
     const navigate = useNavigate();
     const createReservaMutation = useCreateReserva();
 
+    // 1. Instância temporária para obter horários padrão iniciais (necessário para defaultValues)
+    const tempForm = useForm<ReservaFormValues>();
+    const tempLogicResults = useReservaLogic(tempForm);
+
+    // 2. Instância final do formulário
     const form = useForm<ReservaFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             acomodacao_id: initialAcomodacaoId || "",
             total_hospedes: 1,
-            check_in_time: STANDARD_CHECK_IN_TIME, // Usando o padrão 14:00 como valor inicial
-            check_out_time: DEFAULT_CHECK_OUT_TIME,
+            // Usa os valores dinâmicos/configuráveis da acomodação ou os fallbacks
+            check_in_time: tempLogicResults.standardCheckInTime || STANDARD_CHECK_IN_TIME_FALLBACK,
+            check_out_time: tempLogicResults.defaultCheckOutTime || DEFAULT_CHECK_OUT_TIME_FALLBACK, 
         },
     });
 
-    const {
-        acomodacoes,
-        selectedAcomodacao,
-        isLoadingAcomodacoes,
-        isLoadingBlockedDates,
-        numNights,
-        valorTotal,
-        precoPorNoite,
-        latestCheckOutTime,
-        earliestCheckInTime,
-        cleaningBufferHours, // Novo
-        filteredCheckInTimeOptions,
-        calendarModifiers,
-        disabledDates,
-        isDateFullyBlocked,
-    } = useReservaLogic(form);
+    // 3. Re-execução do hook com a instância final do formulário (para reagir a changes)
+    const formToWatch = useMemo(() => form, [form.getValues]);
+    const logicResults = useReservaLogic(formToWatch);
     
-    const checkInDate = form.watch("check_in_date");
-    const checkOutDate = form.watch("check_out_date");
-    const selectedAcomodacaoId = form.watch("acomodacao_id");
+    // Desestruturação para simplificar o código
+    const {
+        acomodacoes, selectedAcomodacao, earliestCheckInTime, latestCheckOutTime,
+        cleaningBufferHours, filteredCheckInTimeOptions, calendarModifiers,
+        disabledDates, isDateFullyBlocked, numNights, valorTotal, precoPorNoite,
+        standardCheckInTime: currentStandardCheckInTime, // O horário padrão configurado ATUAL
+        defaultCheckOutTime, // Horário de check-out configurado ATUAL
+    } = logicResults;
 
-    // Sincroniza o ID inicial se for passado
+
+    const { checkInDate, checkOutDate, acomodacao_id: selectedAcomodacaoId } = form.watch();
+    const isPending = isLoadingAuth || logicResults.isLoadingAcomodacoes || createReservaMutation.isPending || logicResults.isLoadingBlockedDates;
+
+
+    // Sincroniza o ID inicial (inalterado)
     useEffect(() => {
         if (initialAcomodacaoId && initialAcomodacaoId !== form.getValues("acomodacao_id")) {
             form.setValue("acomodacao_id", initialAcomodacaoId, { shouldValidate: true });
@@ -110,35 +118,27 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
     // Efeito para ajustar o horário de check-in se o padrão estiver bloqueado
     useEffect(() => {
         if (checkInDate && earliestCheckInTime) {
-            const isStandardTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === STANDARD_CHECK_IN_TIME)?.isBlocked;
-            
-            // Se o horário padrão (14:00) estiver bloqueado, force a seleção do horário mais cedo disponível
-            // Ou se o horário mais cedo disponível for ANTES do padrão (ex: 08:00), mas o formulário ainda está em 14:00, não faz nada.
-            // Apenas ajustamos se o horário selecionado for inválido.
-            
-            // Se o horário mais cedo permitido for ANTES do padrão (ex: 08:00), e o usuário não selecionou nada, 
-            // mantemos 14:00 como default, mas permitimos a seleção de 08:00.
-            
-            // Se o horário mais cedo permitido for DEPOIS do padrão (ex: 15:00), forçamos o ajuste.
-            if (isTimeBefore(STANDARD_CHECK_IN_TIME, earliestCheckInTime)) {
+            // Se o horário mais cedo permitido for DEPOIS do padrão
+            if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
                 form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
             }
         }
-    }, [checkInDate, earliestCheckInTime, filteredCheckInTimeOptions, form]);
+    }, [checkInDate, earliestCheckInTime, currentStandardCheckInTime, form]);
 
 
     async function onSubmit(values: ReservaFormValues) {
+        // ... (Validações e lógica de submissão inalterada)
         if (isAdmin) {
-            showError("Administradores não podem criar reservas através desta interface.");
-            return;
+             showError("Administradores não podem criar reservas através desta interface.");
+             return;
         }
         
         if (!user) {
-            showError("Você precisa estar logado para fazer uma reserva.");
-            navigate("/login");
-            return;
+             showError("Você precisa estar logado para fazer uma reserva.");
+             navigate("/login");
+             return;
         }
-        
+
         if (!selectedAcomodacao) {
             showError("A acomodação selecionada é inválida.");
             return;
@@ -149,32 +149,27 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
             return;
         }
         
-        // Validação de datas e horários (re-verificação de segurança)
         if (disabledDates(values.check_in_date)) {
-            showError("A data de Check-in selecionada está indisponível.");
-            return;
+             showError("A data de Check-in selecionada está indisponível.");
+             return;
         }
         
-        // Verifica se o horário de check-in está bloqueado
         const isTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === values.check_in_time)?.isBlocked;
         if (isTimeBlocked) {
-            // O erro detalhado já está no form.formState.errors.check_in_time.message
-            showError(`O horário de check-in selecionado (${values.check_in_time}) está bloqueado.`);
-            return;
+             showError(`O horário de check-in selecionado (${values.check_in_time}) está bloqueado.`);
+             return;
         }
         
-        // Verifica se o intervalo inteiro está livre (exceto o check-out day)
         let currentDate = startOfDay(values.check_in_date);
         const endDate = startOfDay(values.check_out_date);
         
         while (isBefore(currentDate, endDate)) {
-            if (isDateFullyBlocked(currentDate)) {
-                showError("O período selecionado contém datas indisponíveis.");
-                return;
-            }
-            currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // Adiciona 1 dia
+             if (isDateFullyBlocked(currentDate)) {
+                 showError("O período selecionado contém datas indisponíveis.");
+                 return;
+             }
+             currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000);
         }
-
 
         const reservaData: ReservaInsert = {
             user_id: user.id,
@@ -192,15 +187,15 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                 form.reset({
                     acomodacao_id: selectedAcomodacaoId,
                     total_hospedes: 1,
-                    check_in_time: STANDARD_CHECK_IN_TIME,
-                    check_out_time: DEFAULT_CHECK_OUT_TIME,
+                    // Usamos os valores dinâmicos para reset
+                    check_in_time: currentStandardCheckInTime, 
+                    check_out_time: defaultCheckOutTime,
                 });
                 navigate("/acompanhar-reserva");
             },
         });
     }
 
-    const isPending = isLoadingAuth || isLoadingAcomodacoes || createReservaMutation.isPending || isLoadingBlockedDates;
     const isFormValid = valorTotal > 0 && form.formState.isValid;
     
     let buttonText = "Solicitar Reserva";
@@ -242,7 +237,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             <Select onValueChange={field.onChange} value={field.value} disabled={isPending || !acomodacoes || isAdmin}>
                                 <FormControl>
                                     <SelectTrigger>
-                                        <SelectValue placeholder={isLoadingAcomodacoes ? "Carregando acomodações..." : "Selecione uma acomodação"} />
+                                        <SelectValue placeholder={logicResults.isLoadingAcomodacoes ? "Carregando acomodações..." : "Selecione uma acomodação"} />
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -277,7 +272,9 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                                         "w-full justify-start text-left font-normal",
                                                         !field.value && "text-muted-foreground"
                                                     )}
-                                                    disabled={isPending || !selectedAcomodacaoId || isAdmin}
+                                                    // CORREÇÃO FINAL: O calendário de Check-in DEVE estar acessível, 
+                                                    // mesmo que a acomodação ainda não tenha sido escolhida.
+                                                    disabled={isPending || isAdmin} 
                                                 >
                                                     {field.value ? (
                                                         format(field.value, "PPP", { locale: ptBR })
@@ -331,7 +328,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
-                                    <p className="text-xs text-muted-foreground">Horário padrão de check-in: {STANDARD_CHECK_IN_TIME}.</p>
+                                    <p className="text-xs text-muted-foreground">Horário padrão de check-in: {currentStandardCheckInTime}.</p>
                                     {latestCheckOutTime && checkInDate && (
                                         <p className="text-xs text-yellow-700 font-medium">
                                             Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}. Buffer de limpeza de {formatBufferHours(cleaningBufferHours)}. Check-in liberado a partir de {earliestCheckInTime}.
@@ -359,7 +356,8 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                                         "w-full justify-start text-left font-normal",
                                                         !field.value && "text-muted-foreground"
                                                     )}
-                                                    disabled={isPending || !checkInDate || isAdmin}
+                                                    // CORRIGIDO: Só é desabilitado se não houver Check-in selecionado.
+                                                    disabled={isPending || !form.getValues("check_in_date") || isAdmin}
                                                 >
                                                     {field.value ? (
                                                         format(field.value, "PPP", { locale: ptBR })
@@ -401,7 +399,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {/* Usamos timeOptions diretamente aqui, pois não há bloqueio de check-out time */}
+                                            {/* Usamos timeOptions diretamente aqui */}
                                             {timeOptions.map(time => (
                                                 <SelectItem key={time} value={time}>
                                                     {time}
@@ -410,7 +408,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
-                                    <p className="text-xs text-muted-foreground">Horário padrão de check-out: {DEFAULT_CHECK_OUT_TIME}.</p>
+                                    <p className="text-xs text-muted-foreground">Horário padrão de check-out: {defaultCheckOutTime}.</p>
                                 </FormItem>
                             )}
                         />
@@ -418,7 +416,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                 </div>
                 
                 {/* Mensagem de Carregamento de Disponibilidade */}
-                {selectedAcomodacaoId && isLoadingBlockedDates && (
+                {selectedAcomodacaoId && logicResults.isLoadingBlockedDates && (
                     <p className="text-sm text-center text-blue-500 flex items-center justify-center">
                         <Loader2 className="h-4 w-4 animate-spin mr-2" /> Verificando disponibilidade...
                     </p>
@@ -460,7 +458,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
 
                 {/* 5. Aviso de Admin ou Login */}
                 {isAdmin ? (
-                    <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-center text-yellow-800">
+                   <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-center text-yellow-800">
                         <p className="font-semibold flex items-center justify-center">
                             <ShieldAlert className="h-5 w-5 mr-2" />
                             Acesso Administrativo
