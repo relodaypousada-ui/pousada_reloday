@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useAllAcomodacoes } from "@/integrations/supabase/acomodacoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ReservaInsert, useCreateReserva, useBlockedDates, DateRange } from "@/integrations/supabase/reservas";
+import { ReservaInsert, useCreateReserva, useBlockedDates, BlockedDateTime } from "@/integrations/supabase/reservas";
 import { showError } from "@/utils/toast";
 
 // Horários padrão
@@ -36,7 +36,6 @@ const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const minutes = i % 2 === 0 ? '00' : '30';
     return `${String(hours).padStart(2, '0')}:${minutes}`;
 });
-
 
 // Schema de Validação
 const formSchema = z.object({
@@ -55,30 +54,48 @@ const formSchema = z.object({
     path: ["check_out_date"],
 });
 
-// Helper function to check if a date is blocked
-const isDateBlocked = (date: Date, blockedRanges: DateRange[]): boolean => {
-    const today = startOfDay(new Date());
+// Helper function to find the latest check-out time on a specific date
+const getLatestCheckOutTime = (date: Date, blockedRanges: BlockedDateTime[]): string | null => {
+    // Find all reservations that END on this specific date
+    const checkOutsOnThisDay = blockedRanges.filter(range => 
+        !range.is_manual && // Only consider reservations
+        range.end_time && 
+        isSameDay(parseISO(range.end_date), date)
+    );
     
-    // 1. Block past dates
-    if (isBefore(date, today)) {
-        return true;
+    if (checkOutsOnThisDay.length === 0) {
+        return null;
     }
+    
+    // Find the latest time string (lexicographical comparison works for HH:MM)
+    const latestTime = checkOutsOnThisDay.reduce((latest, current) => {
+        if (!current.end_time) return latest;
+        return current.end_time > latest ? current.end_time : latest;
+    }, "00:00");
+    
+    return latestTime;
+};
 
-    // 2. Block dates within existing reservations
+// Helper function to check if a date is blocked for check-in (full day block)
+const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boolean => {
+    const today = startOfDay(new Date());
+    if (isBefore(date, today)) return true;
+
     return blockedRanges.some(range => {
-        const start = parseISO(range.start);
-        const end = parseISO(range.end);
+        const start = parseISO(range.start_date);
+        const end = parseISO(range.end_date);
         
-        // Block the date if it is on or after the check-in date (start)
-        // AND strictly before the check-out date (end).
-        // This ensures the check-out date itself is available for a new check-in.
+        // A date is fully blocked if it falls within a reservation/manual block period, 
+        // excluding the check-out day itself.
+        
+        // Check if the date is an active night (start inclusive, end exclusive)
         return isWithinInterval(date, { start: start, end: end }) && !isSameDay(date, end);
     });
 };
 
 
 const Reserva: React.FC = () => {
-  const { user, isAdmin, isLoading: isLoadingAuth } = useAuth(); // Adicionado isAdmin
+  const { user, isAdmin, isLoading: isLoadingAuth } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const acomodacaoSlug = searchParams.get('acomodacao_slug');
@@ -91,8 +108,8 @@ const Reserva: React.FC = () => {
     defaultValues: {
       acomodacao_id: "",
       total_hospedes: 1,
-      check_in_time: DEFAULT_CHECK_IN_TIME, // Valor padrão
-      check_out_time: DEFAULT_CHECK_OUT_TIME, // Valor padrão
+      check_in_time: DEFAULT_CHECK_IN_TIME,
+      check_out_time: DEFAULT_CHECK_OUT_TIME,
     },
   });
   
@@ -101,6 +118,7 @@ const Reserva: React.FC = () => {
   const checkInDate = form.watch("check_in_date");
   const checkOutDate = form.watch("check_out_date");
   const totalHospedes = form.watch("total_hospedes");
+  const checkInTime = form.watch("check_in_time");
 
   const selectedAcomodacao = acomodacoes?.find(a => a.id === selectedAcomodacaoId);
   
@@ -126,6 +144,103 @@ const Reserva: React.FC = () => {
   const formatCurrency = (value: number) => {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
+  
+  // --- Lógica de Bloqueio de Datas e Horários ---
+  
+  // 1. Encontra o último horário de check-out no dia de check-in selecionado
+  const latestCheckOutTime = useMemo(() => {
+    if (!checkInDate || !blockedDates) return null;
+    return getLatestCheckOutTime(checkInDate, blockedDates);
+  }, [checkInDate, blockedDates]);
+
+  // 2. Filtra as opções de horário de check-in
+  const filteredCheckInTimeOptions = useMemo(() => {
+    if (!latestCheckOutTime) {
+        return timeOptions.map(time => ({ time, isBlocked: false }));
+    }
+    
+    // Se houver um check-out no dia, bloqueia horários ANTES ou IGUAIS ao último check-out.
+    return timeOptions.map(time => ({
+        time,
+        isBlocked: time <= latestCheckOutTime,
+    }));
+  }, [latestCheckOutTime]);
+  
+  // 3. Função para desabilitar datas no calendário
+  const disabledDates = (date: Date) => {
+      if (!blockedDates) return false;
+      
+      // Se a data for totalmente bloqueada (noite ativa), desabilita.
+      if (isDateFullyBlocked(date, blockedDates)) {
+          return true;
+      }
+      
+      // Se for um dia de check-out, permitimos a seleção, mas o horário será validado.
+      return false;
+  };
+  
+  // 4. Modificadores para estilizar datas bloqueadas (vermelho) e parcialmente bloqueadas (amarelo)
+  const calendarModifiers = useMemo(() => {
+      if (!blockedDates) return {};
+
+      const fullyBlockedDates: Date[] = [];
+      const partialBlockDates: Date[] = [];
+
+      blockedDates.forEach(range => {
+          const start = parseISO(range.start_date);
+          const end = parseISO(range.end_date);
+          
+          // Coleta datas totalmente bloqueadas (noites)
+          let current = startOfDay(start);
+          const endLimit = startOfDay(end);
+          
+          while (isBefore(current, endLimit)) {
+              fullyBlockedDates.push(current);
+              current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+          }
+          
+          // Coleta datas parcialmente bloqueadas (dias de check-out de reservas)
+          if (!range.is_manual && range.end_time) {
+              const checkOutDay = startOfDay(end);
+              
+              // Adiciona apenas se não for um dia totalmente bloqueado (para evitar sobreposição de estilo)
+              if (!fullyBlockedDates.some(blockedDate => isSameDay(checkOutDay, blockedDate))) {
+                  partialBlockDates.push(checkOutDay);
+              }
+          }
+      });
+
+      return {
+          blocked: fullyBlockedDates,
+          partialBlock: partialBlockDates,
+      };
+  }, [blockedDates]);
+  
+  // 5. Validação de horário de check-in
+  useEffect(() => {
+      if (checkInDate && latestCheckOutTime && checkInTime) {
+          // Se o horário selecionado for bloqueado, limpa o campo e mostra erro
+          if (checkInTime <= latestCheckOutTime) {
+              form.setError("check_in_time", {
+                  type: "manual",
+                  message: `O check-in só é permitido após as ${latestCheckOutTime} devido a um check-out anterior.`,
+              });
+          } else {
+              form.clearErrors("check_in_time");
+          }
+      } else if (checkInDate && latestCheckOutTime && checkInTime === DEFAULT_CHECK_IN_TIME) {
+          // Se o horário padrão for bloqueado, mostra erro
+          if (DEFAULT_CHECK_IN_TIME <= latestCheckOutTime) {
+              form.setError("check_in_time", {
+                  type: "manual",
+                  message: `O horário padrão de check-in (${DEFAULT_CHECK_IN_TIME}) está bloqueado. Selecione um horário após as ${latestCheckOutTime}.`,
+              });
+          }
+      } else {
+          form.clearErrors("check_in_time");
+      }
+  }, [checkInDate, latestCheckOutTime, checkInTime, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (isAdmin) {
@@ -134,7 +249,6 @@ const Reserva: React.FC = () => {
     }
     
     if (!user) {
-        // Se não estiver logado, redireciona para o login
         showError("Você precisa estar logado para fazer uma reserva.");
         navigate("/login");
         return;
@@ -152,16 +266,24 @@ const Reserva: React.FC = () => {
     
     // Verificação final de datas bloqueadas antes de submeter
     if (blockedDates) {
-        if (isDateBlocked(values.check_in_date, blockedDates)) {
-            showError("A data de Check-in selecionada está bloqueada.");
+        // 1. Verifica se o dia de check-in está totalmente bloqueado
+        if (isDateFullyBlocked(values.check_in_date, blockedDates)) {
+            showError("A data de Check-in selecionada está indisponível.");
             return;
         }
-        // Verifica se o intervalo inteiro está livre (exceto o check-out)
+        
+        // 2. Verifica se o horário de check-in é válido para o dia
+        if (latestCheckOutTime && values.check_in_time <= latestCheckOutTime) {
+            showError(`O check-in só é permitido após as ${latestCheckOutTime} neste dia.`);
+            return;
+        }
+        
+        // 3. Verifica se o intervalo inteiro está livre (exceto o check-out day)
         let currentDate = startOfDay(values.check_in_date);
         const endDate = startOfDay(values.check_out_date);
         
         while (isBefore(currentDate, endDate)) {
-            if (isDateBlocked(currentDate, blockedDates)) {
+            if (isDateFullyBlocked(currentDate, blockedDates)) {
                 showError("O período selecionado contém datas indisponíveis.");
                 return;
             }
@@ -175,8 +297,8 @@ const Reserva: React.FC = () => {
         acomodacao_id: values.acomodacao_id,
         check_in_date: format(values.check_in_date, 'yyyy-MM-dd'),
         check_out_date: format(values.check_out_date, 'yyyy-MM-dd'),
-        check_in_time: values.check_in_time, // Novo campo
-        check_out_time: values.check_out_time, // Novo campo
+        check_in_time: values.check_in_time,
+        check_out_time: values.check_out_time,
         total_hospedes: values.total_hospedes,
         valor_total: valorTotal,
     };
@@ -184,7 +306,7 @@ const Reserva: React.FC = () => {
     createReservaMutation.mutate(reservaData, {
         onSuccess: () => {
             form.reset({
-                acomodacao_id: selectedAcomodacaoId, // Mantém a acomodação selecionada
+                acomodacao_id: selectedAcomodacaoId,
                 total_hospedes: 1,
                 check_in_time: DEFAULT_CHECK_IN_TIME,
                 check_out_time: DEFAULT_CHECK_OUT_TIME,
@@ -207,37 +329,31 @@ const Reserva: React.FC = () => {
       buttonDisabled = true;
   } else if (!user) {
       buttonText = "Fazer Login para Reservar";
-      buttonDisabled = isPending || !isFormValid; // Permite clicar se o formulário for válido para acionar o redirecionamento
+      buttonDisabled = isPending || !isFormValid;
       buttonAction = () => {
           if (isFormValid) {
               showError("Você precisa estar logado para fazer uma reserva.");
               navigate("/login");
           } else {
-              // Se o formulário não for válido, submete para mostrar erros de validação
               form.handleSubmit(onSubmit)();
           }
       };
   }
   
-  // Função para desabilitar datas no calendário
-  const disabledDates = (date: Date) => {
-      if (!blockedDates) return false;
-      return isDateBlocked(date, blockedDates);
+  // Estilos para os modificadores do calendário
+  const calendarStyles = {
+      blocked: { 
+          backgroundColor: 'hsl(var(--destructive) / 0.1)', 
+          color: 'hsl(var(--destructive))',
+          borderRadius: '0',
+      },
+      partialBlock: {
+          backgroundColor: 'hsl(40 80% 90%)', // Amarelo suave
+          color: 'hsl(40 80% 40%)', // Texto amarelo escuro
+          border: '1px solid hsl(40 80% 70%)',
+          borderRadius: '0',
+      }
   };
-  
-  // Modificadores para estilizar datas bloqueadas
-  const blockedModifiers = blockedDates?.map(range => {
-    const start = parseISO(range.start);
-    const end = parseISO(range.end);
-    
-    // O intervalo de bloqueio vai do check-in até o dia anterior ao check-out
-    const intervalEnd = new Date(end.getTime() - 24 * 60 * 60 * 1000);
-
-    return {
-      from: startOfDay(start),
-      to: startOfDay(intervalEnd),
-    };
-  }) || [];
 
 
   return (
@@ -319,15 +435,9 @@ const Reserva: React.FC = () => {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={disabledDates} // Aplica desabilitação
-                                modifiers={{ blocked: blockedModifiers }} // Aplica modificadores de estilo
-                                modifiersStyles={{
-                                    blocked: { 
-                                        backgroundColor: 'hsl(var(--destructive) / 0.1)', 
-                                        color: 'hsl(var(--destructive))',
-                                        borderRadius: '0',
-                                    },
-                                }}
+                                disabled={disabledDates}
+                                modifiers={calendarModifiers}
+                                modifiersStyles={calendarStyles}
                                 initialFocus
                                 locale={ptBR}
                               />
@@ -350,15 +460,25 @@ const Reserva: React.FC = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {timeOptions.map(time => (
-                                <SelectItem key={time} value={time}>
-                                  {time}
+                              {filteredCheckInTimeOptions.map(({ time, isBlocked }) => (
+                                <SelectItem 
+                                    key={time} 
+                                    value={time} 
+                                    disabled={isBlocked}
+                                    className={cn(isBlocked && "text-destructive/70 bg-destructive/10 cursor-not-allowed")}
+                                >
+                                  {time} {isBlocked && "(Bloqueado)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
                           <p className="text-xs text-muted-foreground">Horário padrão de check-in: {DEFAULT_CHECK_IN_TIME}.</p>
+                          {latestCheckOutTime && checkInDate && (
+                              <p className="text-xs text-yellow-700 font-medium">
+                                  Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}.
+                              </p>
+                          )}
                         </FormItem>
                       )}
                     />
@@ -399,14 +519,8 @@ const Reserva: React.FC = () => {
                                 onSelect={field.onChange}
                                 // Desabilita datas antes ou no mesmo dia do check-in, e datas bloqueadas
                                 disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
-                                modifiers={{ blocked: blockedModifiers }} // Aplica modificadores de estilo
-                                modifiersStyles={{
-                                    blocked: { 
-                                        backgroundColor: 'hsl(var(--destructive) / 0.1)', 
-                                        color: 'hsl(var(--destructive))',
-                                        borderRadius: '0',
-                                    },
-                                }}
+                                modifiers={calendarModifiers}
+                                modifiersStyles={calendarStyles}
                                 initialFocus
                                 locale={ptBR}
                               />
@@ -522,7 +636,7 @@ const Reserva: React.FC = () => {
               ) : null}
               
               <Button 
-                type={user && !isAdmin ? "submit" : "button"} // Usa type="button" se não estiver logado para gerenciar o clique manualmente
+                type={user && !isAdmin ? "submit" : "button"}
                 className="w-full" 
                 disabled={buttonDisabled}
                 onClick={!user && !isAdmin ? buttonAction : undefined}

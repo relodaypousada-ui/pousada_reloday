@@ -29,10 +29,12 @@ export interface Reserva {
 export type ReservaInsert = Omit<Reserva, 'id' | 'created_at' | 'status' | 'acomodacoes' | 'profiles'>;
 export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'check_in_time' | 'check_out_time' | 'total_hospedes' | 'valor_total'>>;
 
-// New type for date ranges
-export interface DateRange {
-  start: string; // check_in_date or data_inicio
-  end: string;   // check_out_date or data_fim
+// New type for date ranges including time for reservations
+export interface BlockedDateTime {
+  start_date: string; // check_in_date or data_inicio
+  end_date: string;   // check_out_date or data_fim
+  end_time?: string;  // check_out_time (only for reservations)
+  is_manual: boolean; // To distinguish manual blocks (full day) from reservations
 }
 
 // --- Query Hooks ---
@@ -65,60 +67,6 @@ export const useAdminReservas = () => {
 };
 
 // Função para buscar bloqueios manuais
-const getManualBlocks = async (acomodacaoId: string): Promise<DateRange[]> => {
-    const { data, error } = await supabase
-        .from("bloqueios_manuais")
-        .select("data_inicio, data_fim")
-        .eq("acomodacao_id", acomodacaoId);
-
-    if (error) {
-        console.error(`Erro ao buscar bloqueios manuais para acomodação ${acomodacaoId}:`, error);
-        throw new Error("Não foi possível carregar os bloqueios manuais.");
-    }
-    
-    return data.map(item => ({
-        start: item.data_inicio,
-        end: item.data_fim,
-    })) as DateRange[];
-};
-
-// Função para buscar datas bloqueadas (Reservas + Bloqueios Manuais)
-const getBlockedDates = async (acomodacaoId: string): Promise<DateRange[]> => {
-  // 1. Buscar datas de reservas confirmadas/pendentes
-  const { data: reservaDates, error: reservaError } = await supabase
-    .from("reservas")
-    .select("check_in_date, check_out_date")
-    .eq("acomodacao_id", acomodacaoId)
-    .in("status", ["confirmada", "pendente"]);
-
-  if (reservaError) {
-    console.error(`Erro ao buscar datas de reservas para acomodação ${acomodacaoId}:`, reservaError);
-    throw new Error("Não foi possível carregar a disponibilidade de datas de reservas.");
-  }
-  
-  const blockedByReservas: DateRange[] = reservaDates.map(item => ({
-      start: item.check_in_date,
-      end: item.check_out_date,
-  }));
-  
-  // 2. Buscar bloqueios manuais
-  const blockedByManual = await getManualBlocks(acomodacaoId);
-  
-  // Combina as duas listas
-  return [...blockedByReservas, ...blockedByManual];
-};
-
-export const useBlockedDates = (acomodacaoId: string | undefined) => {
-  return useQuery<DateRange[], Error>({
-    queryKey: ["blockedDates", acomodacaoId],
-    queryFn: () => getBlockedDates(acomodacaoId!),
-    enabled: !!acomodacaoId,
-  });
-};
-
-
-// --- Mutation Hooks (CRUD de Bloqueios Manuais) ---
-
 export interface BloqueioManual {
     id: string;
     acomodacao_id: string;
@@ -127,6 +75,66 @@ export interface BloqueioManual {
     motivo: string | null;
     created_at: string;
 }
+
+const getManualBlocks = async (acomodacaoId: string): Promise<BloqueioManual[]> => {
+    const { data, error } = await supabase
+        .from("bloqueios_manuais")
+        .select("*")
+        .eq("acomodacao_id", acomodacaoId);
+
+    if (error) {
+        console.error(`Erro ao buscar bloqueios manuais para acomodação ${acomodacaoId}:`, error);
+        throw new Error("Não foi possível carregar os bloqueios manuais.");
+    }
+    
+    return data as BloqueioManual[];
+};
+
+// Função para buscar datas bloqueadas (Reservas + Bloqueios Manuais)
+const getBlockedDates = async (acomodacaoId: string): Promise<BlockedDateTime[]> => {
+  // 1. Buscar datas de reservas confirmadas/pendentes
+  const { data: reservaDates, error: reservaError } = await supabase
+    .from("reservas")
+    .select("check_in_date, check_out_date, check_out_time")
+    .eq("acomodacao_id", acomodacaoId)
+    .in("status", ["confirmada", "pendente"]);
+
+  if (reservaError) {
+    console.error(`Erro ao buscar datas de reservas para acomodação ${acomodacaoId}:`, reservaError);
+    throw new Error("Não foi possível carregar a disponibilidade de datas de reservas.");
+  }
+  
+  const blockedByReservas: BlockedDateTime[] = reservaDates.map(item => ({
+      start_date: item.check_in_date,
+      end_date: item.check_out_date,
+      end_time: item.check_out_time,
+      is_manual: false,
+  }));
+  
+  // 2. Buscar bloqueios manuais
+  const manualBlocks = await getManualBlocks(acomodacaoId);
+  
+  const blockedByManual: BlockedDateTime[] = manualBlocks.map(item => ({
+      start_date: item.data_inicio,
+      end_date: item.data_fim,
+      end_time: undefined, // Full day block
+      is_manual: true,
+  }));
+  
+  // Combina as duas listas
+  return [...blockedByReservas, ...blockedByManual];
+};
+
+export const useBlockedDates = (acomodacaoId: string | undefined) => {
+  return useQuery<BlockedDateTime[], Error>({
+    queryKey: ["blockedDates", acomodacaoId],
+    queryFn: () => getBlockedDates(acomodacaoId!),
+    enabled: !!acomodacaoId,
+  });
+};
+
+
+// --- Mutation Hooks (CRUD de Bloqueios Manuais) ---
 
 export type BloqueioManualInsert = Omit<BloqueioManual, 'id' | 'created_at'>;
 
@@ -149,7 +157,7 @@ export const useCreateManualBlock = () => {
     return useMutation<BloqueioManual, Error, BloqueioManualInsert>({
         mutationFn: createManualBlock,
         onSuccess: (newBlock) => {
-            queryClient.invalidateQueries({ queryKey: ["manualBlocks", newBlock.acomodacao_id] });
+            queryClient.invalidateQueries({ queryKey: ["manualBlocks", "allAdmin"] }); // Invalida a lista de admin
             queryClient.invalidateQueries({ queryKey: ["blockedDates", newBlock.acomodacao_id] });
             showSuccess("Bloqueio manual criado com sucesso!");
         },
@@ -181,7 +189,7 @@ export const useDeleteManualBlock = () => {
     return useMutation<string, Error, string>({
         mutationFn: deleteManualBlock,
         onSuccess: (acomodacaoId) => {
-            queryClient.invalidateQueries({ queryKey: ["manualBlocks", acomodacaoId] });
+            queryClient.invalidateQueries({ queryKey: ["manualBlocks", "allAdmin"] }); // Invalida a lista de admin
             queryClient.invalidateQueries({ queryKey: ["blockedDates", acomodacaoId] });
             showSuccess("Bloqueio manual removido com sucesso!");
         },

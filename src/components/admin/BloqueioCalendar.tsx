@@ -1,36 +1,71 @@
 import React, { useMemo } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Loader2 } from "lucide-react";
-import { useBlockedDates } from "@/integrations/supabase/reservas";
-import { parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { useBlockedDates, BlockedDateTime } from "@/integrations/supabase/reservas";
+import { parseISO, startOfDay, isBefore, isSameDay, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface BloqueioCalendarProps {
   acomodacaoId: string;
 }
 
+// Helper function to check if a date is blocked for check-in (full day block)
+const isDateFullyBlocked = (date: Date, blockedRanges: BlockedDateTime[]): boolean => {
+    const today = startOfDay(new Date());
+    if (isBefore(date, today)) return true;
+
+    return blockedRanges.some(range => {
+        const start = parseISO(range.start_date);
+        const end = parseISO(range.end_date);
+        
+        // A date is fully blocked if it falls within a reservation/manual block period, 
+        // excluding the check-out day itself.
+        
+        // Check if the date is an active night (start inclusive, end exclusive)
+        return isWithinInterval(date, { start: start, end: end }) && !isSameDay(date, end);
+    });
+};
+
 const BloqueioCalendar: React.FC<BloqueioCalendarProps> = ({ acomodacaoId }) => {
-  const { data: blockedRanges, isLoading, isError } = useBlockedDates(acomodacaoId);
+  const { data: blockedDates, isLoading, isError } = useBlockedDates(acomodacaoId);
 
-  // Mapeia os intervalos bloqueados para o formato que o react-day-picker entende
-  const blockedModifiers = useMemo(() => {
-    if (!blockedRanges) return [];
+  // 1. Modificadores para estilizar datas bloqueadas (vermelho) e parcialmente bloqueadas (amarelo)
+  const calendarModifiers = useMemo(() => {
+      if (!blockedDates) return {};
 
-    return blockedRanges.map(range => {
-      const start = parseISO(range.start);
-      const end = parseISO(range.end);
-      
-      // O intervalo deve incluir o dia de check-in (start) mas excluir o dia de check-out (end)
-      // para refletir a lógica de reserva (check-out é o dia que a acomodação fica livre).
-      // Usamos endOfDay no dia anterior ao check-out para garantir que o dia de check-out não seja marcado.
-      const intervalEnd = endOfDay(new Date(end.getTime() - 24 * 60 * 60 * 1000));
+      const fullyBlockedDates: Date[] = [];
+      const partialBlockDates: Date[] = [];
+
+      blockedDates.forEach(range => {
+          const start = parseISO(range.start_date);
+          const end = parseISO(range.end_date);
+          
+          // Coleta datas totalmente bloqueadas (noites)
+          let current = startOfDay(start);
+          const endLimit = startOfDay(end);
+          
+          while (isBefore(current, endLimit)) {
+              fullyBlockedDates.push(current);
+              current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+          }
+          
+          // Coleta datas parcialmente bloqueadas (dias de check-out de reservas)
+          if (!range.is_manual && range.end_time) {
+              const checkOutDay = startOfDay(end);
+              
+              // Adiciona apenas se não for um dia totalmente bloqueado (para evitar sobreposição de estilo)
+              if (!fullyBlockedDates.some(blockedDate => isSameDay(checkOutDay, blockedDate))) {
+                  partialBlockDates.push(checkOutDay);
+              }
+          }
+      });
 
       return {
-        from: startOfDay(start),
-        to: intervalEnd,
+          blocked: fullyBlockedDates,
+          partialBlock: partialBlockDates,
       };
-    });
-  }, [blockedRanges]);
+  }, [blockedDates]);
+
 
   if (isLoading) {
     return (
@@ -56,21 +91,31 @@ const BloqueioCalendar: React.FC<BloqueioCalendarProps> = ({ acomodacaoId }) => 
         locale={ptBR}
         className="rounded-md border w-full"
         // Modificadores para destacar as datas bloqueadas
-        modifiers={{
-          blocked: blockedModifiers,
-        }}
+        modifiers={calendarModifiers}
         modifiersStyles={{
           blocked: { 
-            backgroundColor: 'hsl(var(--destructive) / 0.1)', // Cor de fundo suave
-            color: 'hsl(var(--destructive))', // Cor do texto
-            borderRadius: '0', // Remove bordas arredondadas para intervalos
+            backgroundColor: 'hsl(var(--destructive) / 0.1)', // Vermelho suave (Totalmente Bloqueado)
+            color: 'hsl(var(--destructive))',
+            borderRadius: '0',
           },
+          partialBlock: {
+            backgroundColor: 'hsl(40 80% 90%)', // Amarelo suave (Parcialmente Bloqueado)
+            color: 'hsl(40 80% 40%)',
+            border: '1px solid hsl(40 80% 70%)',
+            borderRadius: '0',
+          }
         }}
         // Renderiza o calendário sem seleção, apenas para visualização
       />
-      <div className="mt-4 text-sm text-muted-foreground">
-        <span className="inline-block w-3 h-3 mr-2 rounded-full bg-destructive/20 border border-destructive"></span>
-        Datas Bloqueadas (Reservas Confirmadas/Pendentes ou Bloqueios Manuais)
+      <div className="mt-4 text-sm space-y-1">
+        <div className="flex items-center">
+            <span className="inline-block w-3 h-3 mr-2 rounded-full bg-destructive/20 border border-destructive"></span>
+            <span className="text-muted-foreground">Datas Totalmente Bloqueadas (Noites de Reserva/Bloqueio Manual)</span>
+        </div>
+        <div className="flex items-center">
+            <span className="inline-block w-3 h-3 mr-2 rounded-full bg-yellow-500/20 border border-yellow-500"></span>
+            <span className="text-muted-foreground">Datas Parcialmente Bloqueadas (Dia de Check-out, disponível após o horário de saída)</span>
+        </div>
       </div>
     </div>
   );
