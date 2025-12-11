@@ -224,6 +224,21 @@ const Reserva: React.FC = () => {
       if (!blockedDates) return false;
       return isDateBlocked(date, blockedDates);
   };
+  
+  // Modificadores para estilizar datas bloqueadas
+  const blockedModifiers = blockedDates?.map(range => {
+    const start = parseISO(range.start);
+    const end = parseISO(range.end);
+    
+    // O intervalo de bloqueio vai do check-in até o dia anterior ao check-out
+    const intervalEnd = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+    return {
+      from: startOfDay(start),
+      to: startOfDay(intervalEnd),
+    };
+  }) || [];
+
 
   return (
     <div className="container py-12 min-h-[60vh] flex justify-center">
@@ -304,7 +319,15 @@ const Reserva: React.FC = () => {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={disabledDates} // Aplica datas bloqueadas
+                                disabled={disabledDates} // Aplica desabilitação
+                                modifiers={{ blocked: blockedModifiers }} // Aplica modificadores de estilo
+                                modifiersStyles={{
+                                    blocked: { 
+                                        backgroundColor: 'hsl(var(--destructive) / 0.1)', 
+                                        color: 'hsl(var(--destructive))',
+                                        borderRadius: '0',
+                                    },
+                                }}
                                 initialFocus
                                 locale={ptBR}
                               />
@@ -335,6 +358,7 @@ const Reserva: React.FC = () => {
                             </SelectContent>
                           </Select>
                           <FormMessage />
+                          <p className="text-xs text-muted-foreground">Horário padrão de check-in: {DEFAULT_CHECK_IN_TIME}.</p>
                         </FormItem>
                       )}
                     />
@@ -375,6 +399,14 @@ const Reserva: React.FC = () => {
                                 onSelect={field.onChange}
                                 // Desabilita datas antes ou no mesmo dia do check-in, e datas bloqueadas
                                 disabled={(date) => date <= (checkInDate || new Date()) || disabledDates(date)}
+                                modifiers={{ blocked: blockedModifiers }} // Aplica modificadores de estilo
+                                modifiersStyles={{
+                                    blocked: { 
+                                        backgroundColor: 'hsl(var(--destructive) / 0.1)', 
+                                        color: 'hsl(var(--destructive))',
+                                        borderRadius: '0',
+                                    },
+                                }}
                                 initialFocus
                                 locale={ptBR}
                               />
@@ -405,6 +437,7 @@ const Reserva: React.FC = () => {
                             </SelectContent>
                           </Select>
                           <FormMessage />
+                          <p className="text-xs text-muted-foreground">Horário padrão de check-out: {DEFAULT_CHECK_OUT_TIME}.</p>
                         </FormItem>
                       )}
                     />
