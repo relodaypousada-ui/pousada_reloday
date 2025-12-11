@@ -129,10 +129,11 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
 
     // 2. Calcula o horário de check-in mais cedo permitido
-    const dynamicEarliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : "00:00";
+    const dynamicEarliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : null;
     
-    // O horário de check-in permitido é o MAIOR entre o padrão (14:00) e o dinâmico (último check-out + 1h)
-    const earliestCheckInTime = isTimeAfter(dynamicEarliestCheckInTime, DEFAULT_CHECK_IN_TIME) 
+    // Se houver um check-out no dia, o horário de check-in é o dinâmico.
+    // Se não houver check-out no dia, o horário de check-in é o padrão (14:00).
+    const earliestCheckInTime = dynamicEarliestCheckInTime 
         ? dynamicEarliestCheckInTime 
         : DEFAULT_CHECK_IN_TIME;
 
