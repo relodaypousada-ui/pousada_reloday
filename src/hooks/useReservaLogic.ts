@@ -35,6 +35,15 @@ const isTimeBefore = (t1: string, t2: string): boolean => {
     return h1 < h2;
 };
 
+// Helper function for robust time string comparison (t1 > t2)
+const isTimeAfter = (t1: string, t2: string): boolean => {
+    const [h1, m1] = t1.split(":").map(Number);
+    const [h2, m2] = t2.split(":").map(Number);
+
+    if (h1 === h2) return m1 > m2;
+    return h1 > h2;
+};
+
 // Helper function to calculate time + 1 hour buffer
 const addOneHour = (time: string): string => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -61,8 +70,8 @@ const getLatestCheckOutTime = (date: Date, blockedRanges: BlockedDateTime[]): st
     
     const latestTime = checkOutsOnThisDay.reduce((latest, current) => {
         if (!current.end_time) return latest;
-        // Use isTimeBefore for accurate comparison
-        return isTimeBefore(latest, current.end_time) ? current.end_time : latest;
+        // Se o horário atual for DEPOIS do último registrado, atualiza
+        return isTimeAfter(current.end_time, latest) ? current.end_time : latest;
     }, "00:00");
     
     return latestTime;
@@ -115,12 +124,18 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 }, [checkInDate, blockedDates]);
 
 
-    const earliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : "00:00";
+    const dynamicEarliestCheckInTime = latestCheckOutTime ? addOneHour(latestCheckOutTime) : "00:00";
+    
+    // O horário de check-in permitido é o MAIOR entre o padrão (14:00) e o dinâmico (último check-out + 1h)
+    const earliestCheckInTime = isTimeAfter(dynamicEarliestCheckInTime, DEFAULT_CHECK_IN_TIME) 
+        ? dynamicEarliestCheckInTime 
+        : DEFAULT_CHECK_IN_TIME;
+
 
     const filteredCheckInTimeOptions = useMemo(() => {
         return timeOptions.map(time => ({
             time,
-            // Use the new robust comparison function
+            // Bloqueia se o horário for estritamente ANTES do horário permitido
             isBlocked: isTimeBefore(time, earliestCheckInTime),
         }));
     }, [earliestCheckInTime]);
@@ -195,28 +210,20 @@ if (isFullyBlocked) {
     
     // Validação de horário de check-in
     useEffect(() => {
-        if (checkInDate && latestCheckOutTime && checkInTime) {
-            // Use isTimeBefore for validation
+        if (checkInDate && checkInTime) {
+            // Se o horário selecionado for anterior ao horário permitido (earliestCheckInTime)
             if (isTimeBefore(checkInTime, earliestCheckInTime)) {
                 form.setError("check_in_time", {
                     type: "manual",
-                    message: `O check-in só é permitido após as ${latestCheckOutTime} (ou seja, a partir das ${earliestCheckInTime}) devido à limpeza.`,
+                    message: `O check-in só é permitido a partir das ${earliestCheckInTime} devido à limpeza.`,
                 });
             } else {
                 form.clearErrors("check_in_time");
             }
-        } else if (checkInDate && latestCheckOutTime && checkInTime === DEFAULT_CHECK_IN_TIME) {
-            // Use isTimeBefore for validation
-            if (isTimeBefore(DEFAULT_CHECK_IN_TIME, earliestCheckInTime)) {
-                form.setError("check_in_time", {
-                    type: "manual",
-                    message: `O horário padrão de check-in (${DEFAULT_CHECK_IN_TIME}) está bloqueado. Selecione um horário a partir das ${earliestCheckInTime}.`,
-                });
-            }
         } else {
             form.clearErrors("check_in_time");
         }
-    }, [checkInDate, latestCheckOutTime, checkInTime, form, earliestCheckInTime]);
+    }, [checkInDate, checkInTime, form, earliestCheckInTime]);
 
 
     return {
