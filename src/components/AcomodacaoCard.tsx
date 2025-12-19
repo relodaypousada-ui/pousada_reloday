@@ -74,7 +74,7 @@ const AcomodacaoCard: React.FC<AcomodacaoCardProps> = ({ acomodacao }) => {
                 Slug Inválido
             </Button>
           )}
-          <Link to="/reserva" className="flex-1">
+          <Link to={`/reserva?acomodacao_slug=${acomodacao.slug}`} className="flex-1">
             <Button className="w-full">
               Reservar
             </Button>

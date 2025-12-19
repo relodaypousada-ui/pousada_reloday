@@ -115,24 +115,11 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         }
     }, [initialAcomodacaoId, form]);
     
-    // Efeito para ajustar o horário de check-in se o padrão estiver bloqueado
-    // useEffect(() => {
-    //     if (checkInDate && earliestCheckInTime) {
-    //         // Se o horário mais cedo permitido for DEPOIS do padrão
-    //         if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
-    //             form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
-    //         }
-    //     }
-    // }, [checkInDate, earliestCheckInTime, currentStandardCheckInTime, form]);
-
     useEffect(() => {
     // Apenas executa se tivermos uma data de check-in e um horário mínimo calculado
     if (checkInDate && earliestCheckInTime) {
         let shouldAdjustTime = false;
         const currentCheckInTime = form.getValues("check_in_time");
-        // if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
-        //         form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
-        //     }
         
         // 1. Regra para HOJE: Se a data é hoje E o horário selecionado é anterior ao mínimo permitido
         if (isSameDay(checkInDate, new Date()) && isTimeBefore(currentCheckInTime, earliestCheckInTime)) {
@@ -259,7 +246,11 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="flex items-center"><Home className="h-4 w-4 mr-2" /> Acomodação Desejada</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={isPending || !acomodacoes || isAdmin}>
+                            <Select 
+                                onValueChange={field.onChange} 
+                                value={field.value} 
+                                disabled={isPending || !acomodacoes || isAdmin || !!initialAcomodacaoId} // Desabilita se initialAcomodacaoId existir
+                            >
                                 <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder={logicResults.isLoadingAcomodacoes ? "Carregando acomodações..." : "Selecione uma acomodação"} />
@@ -273,6 +264,9 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {!!initialAcomodacaoId && (
+                                <p className="text-xs text-primary font-medium">Acomodação pré-selecionada via link.</p>
+                            )}
                             <FormMessage />
                         </FormItem>
                     )}
@@ -297,9 +291,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                                         "w-full justify-start text-left font-normal",
                                                         !field.value && "text-muted-foreground"
                                                     )}
-                                                    // CORREÇÃO FINAL: O calendário de Check-in DEVE estar acessível, 
-                                                    // mesmo que a acomodação ainda não tenha sido escolhida.
-                                                    disabled={isPending || isAdmin} 
+                                                    disabled={isPending || isAdmin || !selectedAcomodacaoId} 
                                                 >
                                                     {field.value ? (
                                                         format(field.value, "PPP", { locale: ptBR })
@@ -333,7 +325,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Entrada</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin || !selectedAcomodacaoId || !checkInDate}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione o horário" />
@@ -381,7 +373,6 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                                         "w-full justify-start text-left font-normal",
                                                         !field.value && "text-muted-foreground"
                                                     )}
-                                                    // CORRIGIDO: Só é desabilitado se não houver Check-in selecionado.
                                                     disabled={isPending || !form.getValues("check_in_date") || isAdmin}
                                                 >
                                                     {field.value ? (
@@ -417,7 +408,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Saída</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin || !selectedAcomodacaoId || !checkOutDate}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione o horário" />
@@ -462,7 +453,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                     max={selectedAcomodacao?.capacidade || 10}
                                     {...field} 
                                     onChange={e => field.onChange(e.target.valueAsNumber)}
-                                    disabled={isPending || isAdmin}
+                                    disabled={isPending || isAdmin || !selectedAcomodacaoId}
                                 />
                             </FormControl>
                             {selectedAcomodacao && (
