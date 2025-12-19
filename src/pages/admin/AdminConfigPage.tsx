@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Loader2, CreditCard, MessageSquare } from "lucide-react";
+import { Settings, Loader2, CreditCard, MessageSquare, Zap } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
-  FormDescription, // IMPORT CORRIGIDO
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,8 +27,9 @@ const configSchema = z.object({
   endereco_fisico: z.string().optional().or(z.literal("")),
   titulo_site: z.string().min(1, "O título é obrigatório.").optional().or(z.literal("")),
   meta_descricao: z.string().optional().or(z.literal("")),
-  chave_pix: z.string().optional().or(z.literal("")), // NOVO
-  mensagem_padrao_whatsapp: z.string().optional().or(z.literal("")), // NOVO
+  chave_pix: z.string().optional().or(z.literal("")),
+  mensagem_padrao_whatsapp: z.string().optional().or(z.literal("")),
+  hook_msg: z.string().url("URL de Webhook inválida.").optional().or(z.literal("")), // NOVO
 });
 
 type ConfigFormValues = z.infer<typeof configSchema>;
@@ -45,8 +46,9 @@ const AdminConfigPage: React.FC = () => {
       endereco_fisico: "",
       titulo_site: "",
       meta_descricao: "",
-      chave_pix: "", // NOVO
-      mensagem_padrao_whatsapp: "", // NOVO
+      chave_pix: "",
+      mensagem_padrao_whatsapp: "",
+      hook_msg: "", // NOVO
     },
     mode: "onChange",
   });
@@ -60,8 +62,9 @@ const AdminConfigPage: React.FC = () => {
         endereco_fisico: config.endereco_fisico || "",
         titulo_site: config.titulo_site || "",
         meta_descricao: config.meta_descricao || "",
-        chave_pix: config.chave_pix || "", // NOVO
-        mensagem_padrao_whatsapp: config.mensagem_padrao_whatsapp || "", // NOVO
+        chave_pix: config.chave_pix || "",
+        mensagem_padrao_whatsapp: config.mensagem_padrao_whatsapp || "",
+        hook_msg: config.hook_msg || "", // NOVO
       });
     }
   }, [config, form]);
@@ -87,6 +90,13 @@ const AdminConfigPage: React.FC = () => {
     const updates: ConfiguracoesUpdate = {
       chave_pix: values.chave_pix || null,
       mensagem_padrao_whatsapp: values.mensagem_padrao_whatsapp || null,
+    };
+    updateMutation.mutate(updates);
+  };
+  
+  const onSubmitWebhook = (values: ConfigFormValues) => {
+    const updates: ConfiguracoesUpdate = {
+      hook_msg: values.hook_msg || null,
     };
     updateMutation.mutate(updates);
   };
@@ -179,7 +189,7 @@ const AdminConfigPage: React.FC = () => {
             </CardContent>
           </Card>
           
-          {/* NOVO: Formulário de Pagamento e Comunicação */}
+          {/* Pagamento e Comunicação */}
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center">
@@ -231,6 +241,45 @@ const AdminConfigPage: React.FC = () => {
                     disabled={updateMutation.isPending || !form.formState.isDirty}
                   >
                     {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Pagamento"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+          
+          {/* NOVO: Configuração de Webhook */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center">
+                <Zap className="h-6 w-6 mr-2 text-muted-foreground" />
+                Integração Webhook (n8n)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmitWebhook)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="hook_msg"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL do Webhook (n8n)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://n8n.seu-dominio.com/webhook/..." {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            URL para onde os dados da nova reserva serão enviados automaticamente.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="mt-4" 
+                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                  >
+                    {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Webhook"}
                   </Button>
                 </form>
               </Form>

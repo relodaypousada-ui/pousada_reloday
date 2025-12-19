@@ -13,8 +13,9 @@ export interface Configuracoes {
   titulo_site: string | null;
   meta_descricao: string | null;
   updated_at: string | null;
-  chave_pix: string | null; // NOVO
-  mensagem_padrao_whatsapp: string | null; // NOVO
+  chave_pix: string | null;
+  mensagem_padrao_whatsapp: string | null;
+  hook_msg: string | null; // NOVO CAMPO
 }
 
 export type ConfiguracoesUpdate = Partial<Omit<Configuracoes, 'id' | 'updated_at'>>;
