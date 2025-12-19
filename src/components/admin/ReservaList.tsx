@@ -66,7 +66,7 @@ const ReservaList: React.FC = () => {
       
       if (whatsappSent === 'true' && reservaId) {
           // Dispara a mutação para confirmar o envio
-          confirmWhatsappMutation.mutate({ id: reservaId }, {
+          confirmWhatsappMutation.mutate({ id: reservaId, isCurrentlySent: false }, { // Passamos false pois o link de retorno sempre confirma
               onSuccess: () => {
                   // Limpa os parâmetros da URL após o sucesso
                   setSearchParams({}, { replace: true });
@@ -109,8 +109,9 @@ const ReservaList: React.FC = () => {
       }
   };
   
-  const handleConfirmWhatsappSent = (reservaId: string) => {
-      confirmWhatsappMutation.mutate({ id: reservaId });
+  const handleToggleWhatsappSent = (reserva: Reserva) => {
+      const isCurrentlySent = !!reserva.whatsapp_sent_at;
+      confirmWhatsappMutation.mutate({ id: reserva.id, isCurrentlySent });
   };
 
   const filteredReservas = reservas?.filter(reserva => {
@@ -215,15 +216,15 @@ const ReservaList: React.FC = () => {
                         </TooltipContent>
                     </Tooltip>
                     
-                    {/* Botão de Confirmar Envio */}
+                    {/* Botão de Confirmar/Reverter Envio */}
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button 
                                 variant={isWhatsappSent ? "ghost" : "outline"}
                                 size="icon" 
-                                onClick={() => handleConfirmWhatsappSent(reserva.id)}
-                                aria-label="Confirmar Envio WhatsApp"
-                                disabled={confirmWhatsappMutation.isPending || isWhatsappSent}
+                                onClick={() => handleToggleWhatsappSent(reserva)}
+                                aria-label={isWhatsappSent ? "Desconfirmar Envio WhatsApp" : "Confirmar Envio WhatsApp"}
+                                disabled={confirmWhatsappMutation.isPending} // Apenas desabilita durante o processamento
                                 title={isWhatsappSent ? `Enviado em ${formatDate(reserva.whatsapp_sent_at!)}` : "Confirmar envio do WhatsApp"}
                                 className={isWhatsappSent ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" : ""}
                             >
@@ -237,7 +238,7 @@ const ReservaList: React.FC = () => {
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            {isWhatsappSent ? `Envio confirmado em ${formatDate(reserva.whatsapp_sent_at!)}` : "Confirmar envio do WhatsApp"}
+                            {isWhatsappSent ? `Envio confirmado em ${formatDate(reserva.whatsapp_sent_at!)}. Clique para reverter.` : "Confirmar envio do WhatsApp"}
                         </TooltipContent>
                     </Tooltip>
                     

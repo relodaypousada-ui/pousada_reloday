@@ -317,15 +317,17 @@ export const useUpdateReserva = () => {
   });
 };
 
-// NOVO: Mutação para confirmar o envio do WhatsApp
-interface ConfirmWhatsappArgs {
+// Mutação para confirmar/reverter o envio do WhatsApp
+interface ToggleWhatsappSentArgs {
     id: string;
+    isCurrentlySent: boolean;
 }
 
-const confirmWhatsappSent = async ({ id }: ConfirmWhatsappArgs): Promise<Reserva> => {
+const toggleWhatsappSent = async ({ id, isCurrentlySent }: ToggleWhatsappSentArgs): Promise<Reserva> => {
+    const newStatus = isCurrentlySent ? null : new Date().toISOString();
     const { data, error } = await supabase
         .from("reservas")
-        .update({ whatsapp_sent_at: new Date().toISOString() })
+        .update({ whatsapp_sent_at: newStatus })
         .eq("id", id)
         .select(`
             *,
@@ -335,19 +337,23 @@ const confirmWhatsappSent = async ({ id }: ConfirmWhatsappArgs): Promise<Reserva
         .single();
 
     if (error) {
-        console.error("Erro ao confirmar envio do WhatsApp:", error);
-        throw new Error(`Falha ao registrar envio: ${error.message}`);
+        console.error("Erro ao alternar status de envio do WhatsApp:", error);
+        throw new Error(`Falha ao alternar status de envio: ${error.message}`);
     }
     return data as Reserva;
 };
 
 export const useConfirmWhatsappSent = () => {
     const queryClient = useQueryClient();
-    return useMutation<Reserva, Error, ConfirmWhatsappArgs>({
-        mutationFn: confirmWhatsappSent,
-        onSuccess: (updatedReserva) => {
+    return useMutation<Reserva, Error, ToggleWhatsappSentArgs>({
+        mutationFn: toggleWhatsappSent,
+        onSuccess: (updatedReserva, variables) => {
             queryClient.invalidateQueries({ queryKey: ["reservas", "admin"] });
-            showSuccess("Envio do WhatsApp confirmado!");
+            if (variables.isCurrentlySent) {
+                showSuccess("Envio do WhatsApp desconfirmado!");
+            } else {
+                showSuccess("Envio do WhatsApp confirmado!");
+            }
         },
         onError: (error) => {
             showError(error.message);
