@@ -88,18 +88,42 @@ const DashboardCalendar: React.FC = () => {
         <CalendarCheck className="h-5 w-5 mr-2 text-primary" />
         Disponibilidade: {firstAcomodacao.titulo}
       </h3>
-      {/* Adicionando mx-auto para centralizar e garantindo que o Calendar use a largura total */}
-      <div className="flex justify-center">
-        <Calendar
-          mode="single"
-          locale={ptBR}
-          className="rounded-md border w-full max-w-full"
-          modifiers={calendarModifiers}
-          modifiersStyles={calendarStyles}
-          // Desabilita a seleção, pois é apenas visualização
-          disabled={() => true} 
-        />
-      </div>
+      {/* Removendo o div flex justify-center e aplicando w-full diretamente ao Calendar */}
+      <Calendar
+        mode="single"
+        locale={ptBR}
+        className="rounded-md border w-full" // Adicionando w-full aqui
+        classNames={{
+            // Sobrescreve a largura padrão do componente Calendar
+            root: "w-full",
+            months: "w-full flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+            month: "space-y-4 w-full",
+            caption: "flex justify-center pt-1 relative items-center",
+            caption_label: "text-sm font-medium",
+            nav: "space-x-1 flex items-center",
+            nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+            nav_button_previous: "absolute left-1",
+            nav_button_next: "absolute right-1",
+            table: "w-full border-collapse space-y-1",
+            head_row: "flex",
+            head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem]",
+            row: "flex w-full mt-2",
+            cell: "h-9 w-full text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+            day: "h-9 w-full p-0 font-normal aria-selected:opacity-100",
+            day_range_end: "day-range-end",
+            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+            day_today: "bg-accent text-accent-foreground",
+            day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+            day_disabled: "text-muted-foreground opacity-50",
+            day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+            day_hidden: "invisible",
+            ...calendarStyles, // Mantém os estilos de bloqueio
+        }}
+        modifiers={calendarModifiers}
+        modifiersStyles={calendarStyles}
+        // Desabilita a seleção, pois é apenas visualização
+        disabled={() => true} 
+      />
       <div className="mt-4 text-sm space-y-1">
         <div className="flex items-center">
             <span className="inline-block w-3 h-3 mr-2 rounded-full bg-destructive/20 border border-destructive"></span>
