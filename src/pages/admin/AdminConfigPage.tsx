@@ -29,7 +29,7 @@ const configSchema = z.object({
   meta_descricao: z.string().optional().or(z.literal("")),
   chave_pix: z.string().optional().or(z.literal("")),
   mensagem_padrao_whatsapp: z.string().optional().or(z.literal("")),
-  hook_msg: z.string().url("URL de Webhook inválida.").optional().or(z.literal("")), // NOVO
+  hook_msg: z.string().url("URL de Webhook inválida.").optional().or(z.literal("")),
 });
 
 type ConfigFormValues = z.infer<typeof configSchema>;
@@ -48,7 +48,7 @@ const AdminConfigPage: React.FC = () => {
       meta_descricao: "",
       chave_pix: "",
       mensagem_padrao_whatsapp: "",
-      hook_msg: "", // NOVO
+      hook_msg: "",
     },
     mode: "onChange",
   });
@@ -64,10 +64,22 @@ const AdminConfigPage: React.FC = () => {
         meta_descricao: config.meta_descricao || "",
         chave_pix: config.chave_pix || "",
         mensagem_padrao_whatsapp: config.mensagem_padrao_whatsapp || "",
-        hook_msg: config.hook_msg || "", // NOVO
+        hook_msg: config.hook_msg || "",
       });
     }
   }, [config, form]);
+
+  // Função genérica de submissão parcial
+  const handlePartialSubmit = (fields: Array<keyof ConfigFormValues>, updates: ConfiguracoesUpdate) => {
+    // Valida apenas os campos relevantes antes de submeter
+    form.trigger(fields).then(isValid => {
+        if (isValid) {
+            updateMutation.mutate(updates);
+        } else {
+            showError("Por favor, corrija os erros de validação nos campos.");
+        }
+    });
+  };
 
   const onSubmitContato = (values: ConfigFormValues) => {
     const updates: ConfiguracoesUpdate = {
@@ -75,7 +87,7 @@ const AdminConfigPage: React.FC = () => {
       telefone_principal: values.telefone_principal || null,
       endereco_fisico: values.endereco_fisico || null,
     };
-    updateMutation.mutate(updates);
+    handlePartialSubmit(['email_contato', 'telefone_principal', 'endereco_fisico'], updates);
   };
 
   const onSubmitSEO = (values: ConfigFormValues) => {
@@ -83,7 +95,7 @@ const AdminConfigPage: React.FC = () => {
       titulo_site: values.titulo_site || null,
       meta_descricao: values.meta_descricao || null,
     };
-    updateMutation.mutate(updates);
+    handlePartialSubmit(['titulo_site', 'meta_descricao'], updates);
   };
   
   const onSubmitPagamento = (values: ConfigFormValues) => {
@@ -91,14 +103,14 @@ const AdminConfigPage: React.FC = () => {
       chave_pix: values.chave_pix || null,
       mensagem_padrao_whatsapp: values.mensagem_padrao_whatsapp || null,
     };
-    updateMutation.mutate(updates);
+    handlePartialSubmit(['chave_pix', 'mensagem_padrao_whatsapp'], updates);
   };
   
   const onSubmitWebhook = (values: ConfigFormValues) => {
     const updates: ConfiguracoesUpdate = {
       hook_msg: values.hook_msg || null,
     };
-    updateMutation.mutate(updates);
+    handlePartialSubmit(['hook_msg'], updates);
   };
 
   if (isLoadingConfig) {
@@ -134,14 +146,14 @@ const AdminConfigPage: React.FC = () => {
         {/* Coluna Principal de Configurações */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Formulário de Contato */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Informações de Contato</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitContato)} className="space-y-4">
+          <Form {...form}>
+            {/* Formulário de Contato */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Informações de Contato</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
                     name="email_contato"
@@ -182,28 +194,27 @@ const AdminConfigPage: React.FC = () => {
                     )}
                   />
                   <Button 
-                    type="submit" 
+                    type="button" // Mudado para button
+                    onClick={form.handleSubmit(onSubmitContato)} // Usando handleSubmit no clique
                     className="mt-4" 
-                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                    disabled={updateMutation.isPending}
                   >
                     {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Contato"}
                   </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-          
-          {/* Pagamento e Comunicação */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center">
-                <CreditCard className="h-6 w-6 mr-2 text-muted-foreground" />
-                Pagamento e Comunicação
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitPagamento)} className="space-y-4">
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Pagamento e Comunicação */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center">
+                  <CreditCard className="h-6 w-6 mr-2 text-muted-foreground" />
+                  Pagamento e Comunicação
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
                     name="chave_pix"
@@ -240,28 +251,27 @@ const AdminConfigPage: React.FC = () => {
                     )}
                   />
                   <Button 
-                    type="submit" 
+                    type="button" // Mudado para button
+                    onClick={form.handleSubmit(onSubmitPagamento)} // Usando handleSubmit no clique
                     className="mt-4" 
-                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                    disabled={updateMutation.isPending}
                   >
                     {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Pagamento"}
                   </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-          
-          {/* Configuração de Webhook */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center">
-                <Zap className="h-6 w-6 mr-2 text-muted-foreground" />
-                Integração Webhook (n8n)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitWebhook)} className="space-y-4">
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Configuração de Webhook */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center">
+                  <Zap className="h-6 w-6 mr-2 text-muted-foreground" />
+                  Integração Webhook (n8n)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
                     name="hook_msg"
@@ -279,63 +289,62 @@ const AdminConfigPage: React.FC = () => {
                     )}
                   />
                   <Button 
-                    type="submit" 
+                    type="button" // Mudado para button
+                    onClick={form.handleSubmit(onSubmitWebhook)} // Usando handleSubmit no clique
                     className="mt-4" 
-                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                    disabled={updateMutation.isPending}
                   >
                     {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Webhook"}
                   </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-          
-          {/* Documentação do Link de Retorno */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center">
-                <CheckCircle className="h-6 w-6 mr-2 text-green-600" />
-                Link de Confirmação de Envio (WhatsApp)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                    Para que o botão de "Confirmação de Envio" na lista de reservas seja preenchido automaticamente após o envio bem-sucedido da mensagem via n8n/WhatsApp API, configure o link de retorno (Redirect URL) no seu fluxo do n8n.
-                </p>
-                
-                <div>
-                    <h4 className="font-semibold mb-2">URL de Retorno:</h4>
-                    <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm break-all">
-                        {returnLinkExample}
-                    </div>
-                    <FormDescription className="mt-1">
-                        Substitua <code>RESERVA_ID</code> pelo ID completo da reserva.
-                    </FormDescription>
                 </div>
-                
-                <div>
-                    <h4 className="font-semibold mb-2">JSON de Resposta (n8n):</h4>
-                    <p className="text-sm text-muted-foreground mb-1">
-                        O n8n deve retornar um JSON com <code>whatsapp_sent</code> como <code>true</code> para que o frontend registre o envio.
-                    </p>
-                    <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm overflow-x-auto">
-                        {`{
+              </CardContent>
+            </Card>
+            
+            {/* Documentação do Link de Retorno */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center">
+                  <CheckCircle className="h-6 w-6 mr-2 text-green-600" />
+                  Link de Confirmação de Envio (WhatsApp)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                      Para que o botão de "Confirmação de Envio" na lista de reservas seja preenchido automaticamente após o envio bem-sucedido da mensagem via n8n/WhatsApp API, configure o link de retorno (Redirect URL) no seu fluxo do n8n.
+                  </p>
+                  
+                  <div>
+                      <h4 className="font-semibold mb-2">URL de Retorno:</h4>
+                      <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm break-all">
+                          {returnLinkExample}
+                      </div>
+                      <FormDescription className="mt-1">
+                          Substitua <code>RESERVA_ID</code> pelo ID completo da reserva.
+                      </FormDescription>
+                  </div>
+                  
+                  <div>
+                      <h4 className="font-semibold mb-2">JSON de Resposta (n8n):</h4>
+                      <p className="text-sm text-muted-foreground mb-1">
+                          O n8n deve retornar um JSON com <code>whatsapp_sent</code> como <code>true</code> para que o frontend registre o envio.
+                      </p>
+                      <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm overflow-x-auto">
+                          {`{
   "whatsapp_sent": true,
   "reserva_id": "ID_DA_RESERVA"
 }`}
-                    </pre>
-                </div>
-            </CardContent>
-          </Card>
+                      </pre>
+                  </div>
+              </CardContent>
+            </Card>
 
-          {/* Formulário de SEO */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Configurações de SEO e Títulos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitSEO)} className="space-y-4">
+            {/* Formulário de SEO */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Configurações de SEO e Títulos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <FormField
                     control={form.control}
                     name="titulo_site"
@@ -363,16 +372,17 @@ const AdminConfigPage: React.FC = () => {
                     )}
                   />
                   <Button 
-                    type="submit" 
+                    type="button" // Mudado para button
+                    onClick={form.handleSubmit(onSubmitSEO)} // Usando handleSubmit no clique
                     className="mt-4" 
-                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                    disabled={updateMutation.isPending}
                   >
                     {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar SEO"}
                   </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </Form>
         </div>
 
         {/* Coluna Lateral: Status e Ações */}
