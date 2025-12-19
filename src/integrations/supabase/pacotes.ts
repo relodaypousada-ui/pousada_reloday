@@ -2,17 +2,26 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
 
+export interface PacoteMidia {
+  id: string;
+  url: string;
+  tipo: 'image' | 'video';
+  ordem: number;
+}
+
 export interface Pacote {
   id: string;
   nome: string;
   descricao: string | null;
   valor: number;
   categoria: string | null;
+  imagem_url: string | null; // NOVO CAMPO
   created_at: string;
+  midia?: PacoteMidia[]; // Mídias adicionais
 }
 
 // Tipagem para inserção/atualização
-export type PacoteInsert = Omit<Pacote, 'id' | 'created_at'>;
+export type PacoteInsert = Omit<Pacote, 'id' | 'created_at' | 'midia'>;
 export type PacoteUpdate = Partial<PacoteInsert>;
 
 // --- Query Hooks ---
@@ -21,14 +30,22 @@ export type PacoteUpdate = Partial<PacoteInsert>;
 const getAdminPacotes = async (): Promise<Pacote[]> => {
   const { data, error } = await supabase
     .from("pacotes")
-    .select("*")
+    .select(`
+      *,
+      midia:pacotes_midia (id, url, tipo, ordem)
+    `)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Erro ao buscar pacotes para o admin:", error);
     throw new Error("Não foi possível carregar a lista de pacotes. Verifique suas permissões.");
   }
-  return data as Pacote[];
+  
+  // Ordena a mídia
+  return data.map(pacote => ({
+      ...pacote,
+      midia: pacote.midia?.sort((a, b) => a.ordem - b.ordem) || [],
+  })) as Pacote[];
 };
 
 export const useAdminPacotes = () => {
@@ -37,6 +54,41 @@ export const useAdminPacotes = () => {
     queryFn: getAdminPacotes,
   });
 };
+
+// Função para buscar um único pacote pelo ID (Admin)
+const getPacoteById = async (id: string): Promise<Pacote | null> => {
+  const { data, error } = await supabase
+    .from("pacotes")
+    .select(`
+      *,
+      midia:pacotes_midia (id, url, tipo, ordem)
+    `)
+    .eq("id", id)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+    console.error("Erro ao buscar pacote por ID:", error);
+    throw new Error("Não foi possível carregar o pacote.");
+  }
+  
+  if (data) {
+      return {
+          ...data,
+          midia: data.midia?.sort((a, b) => a.ordem - b.ordem) || [],
+      } as Pacote;
+  }
+
+  return null;
+};
+
+export const usePacote = (id: string) => {
+  return useQuery<Pacote | null, Error>({
+    queryKey: ["pacotes", id],
+    queryFn: () => getPacoteById(id),
+    enabled: !!id,
+  });
+};
+
 
 // --- Mutation Hooks (CRUD Admin) ---
 
@@ -94,8 +146,9 @@ export const useUpdatePacote = () => {
   const queryClient = useQueryClient();
   return useMutation<Pacote, Error, UpdatePacoteArgs>({
     mutationFn: updatePacote,
-    onSuccess: () => {
+    onSuccess: (updatedPacote) => {
       queryClient.invalidateQueries({ queryKey: ["pacotes", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["pacotes", updatedPacote.id] });
       showSuccess("Pacote atualizado com sucesso!");
     },
     onError: (error) => {
