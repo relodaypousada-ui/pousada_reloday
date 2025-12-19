@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Loader2, CreditCard, MessageSquare, Zap } from "lucide-react";
+import { Settings, Loader2, CreditCard, MessageSquare, Zap, CheckCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +118,10 @@ const AdminConfigPage: React.FC = () => {
         </div>
       );
   }
+  
+  // URL base para o link de retorno (assumindo que o app está em localhost:8080 durante o desenvolvimento)
+  const returnUrlBase = window.location.origin;
+  const returnLinkExample = `${returnUrlBase}/admin/reservas?whatsapp_sent=true&reserva_id=RESERVA_ID`;
 
   return (
     <div className="w-full">
@@ -247,7 +251,7 @@ const AdminConfigPage: React.FC = () => {
             </CardContent>
           </Card>
           
-          {/* NOVO: Configuração de Webhook */}
+          {/* Configuração de Webhook */}
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center">
@@ -283,6 +287,44 @@ const AdminConfigPage: React.FC = () => {
                   </Button>
                 </form>
               </Form>
+            </CardContent>
+          </Card>
+          
+          {/* Documentação do Link de Retorno */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center">
+                <CheckCircle className="h-6 w-6 mr-2 text-green-600" />
+                Link de Confirmação de Envio (WhatsApp)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                    Para que o botão de "Confirmação de Envio" na lista de reservas seja preenchido automaticamente após o envio bem-sucedido da mensagem via n8n/WhatsApp API, configure o link de retorno (Redirect URL) no seu fluxo do n8n.
+                </p>
+                
+                <div>
+                    <h4 className="font-semibold mb-2">URL de Retorno:</h4>
+                    <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm break-all">
+                        {returnLinkExample}
+                    </div>
+                    <FormDescription className="mt-1">
+                        Substitua <code>RESERVA_ID</code> pelo ID completo da reserva.
+                    </FormDescription>
+                </div>
+                
+                <div>
+                    <h4 className="font-semibold mb-2">JSON de Resposta (n8n):</h4>
+                    <p className="text-sm text-muted-foreground mb-1">
+                        O n8n deve retornar um JSON com <code>whatsapp_sent</code> como <code>true</code> para que o frontend registre o envio.
+                    </p>
+                    <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm overflow-x-auto">
+                        {`{
+  "whatsapp_sent": true,
+  "reserva_id": "ID_DA_RESERVA"
+}`}
+                    </pre>
+                </div>
             </CardContent>
           </Card>
 

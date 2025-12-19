@@ -16,6 +16,7 @@ export interface Reserva {
   total_hospedes: number;
   valor_total: number;
   status: ReservaStatus;
+  whatsapp_sent_at: string | null; // NOVO CAMPO
   // Joined data for admin view
   acomodacoes: {
     titulo: string;
@@ -27,8 +28,8 @@ export interface Reserva {
   };
 }
 
-export type ReservaInsert = Omit<Reserva, 'id' | 'created_at' | 'status' | 'acomodacoes' | 'profiles'>;
-export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'check_in_time' | 'check_out_time' | 'total_hospedes' | 'valor_total'>>;
+export type ReservaInsert = Omit<Reserva, 'id' | 'created_at' | 'status' | 'acomodacoes' | 'profiles' | 'whatsapp_sent_at'>;
+export type ReservaUpdate = Partial<Pick<Reserva, 'status' | 'check_in_date' | 'check_out_date' | 'check_in_time' | 'check_out_time' | 'total_hospedes' | 'valor_total' | 'whatsapp_sent_at'>>;
 
 // New type for date ranges including time for reservations
 export interface BlockedDateTime {
@@ -87,7 +88,8 @@ const getMyReservas = async (userId: string): Promise<Reserva[]> => {
     // Adiciona um profile mockado para manter a compatibilidade de tipagem, embora não seja usado
     return data.map(reserva => ({
         ...reserva,
-        profiles: { full_name: null, whatsapp: null } // Adicionando whatsapp null para compatibilidade
+        profiles: { full_name: null, whatsapp: null }, // Adicionando whatsapp null para compatibilidade
+        whatsapp_sent_at: null, // Adicionando whatsapp_sent_at null para compatibilidade
     })) as Reserva[];
 };
 
@@ -314,6 +316,45 @@ export const useUpdateReserva = () => {
     }
   });
 };
+
+// NOVO: Mutação para confirmar o envio do WhatsApp
+interface ConfirmWhatsappArgs {
+    id: string;
+}
+
+const confirmWhatsappSent = async ({ id }: ConfirmWhatsappArgs): Promise<Reserva> => {
+    const { data, error } = await supabase
+        .from("reservas")
+        .update({ whatsapp_sent_at: new Date().toISOString() })
+        .eq("id", id)
+        .select(`
+            *,
+            acomodacoes (titulo, slug),
+            profiles (full_name, whatsapp)
+        `)
+        .single();
+
+    if (error) {
+        console.error("Erro ao confirmar envio do WhatsApp:", error);
+        throw new Error(`Falha ao registrar envio: ${error.message}`);
+    }
+    return data as Reserva;
+};
+
+export const useConfirmWhatsappSent = () => {
+    const queryClient = useQueryClient();
+    return useMutation<Reserva, Error, ConfirmWhatsappArgs>({
+        mutationFn: confirmWhatsappSent,
+        onSuccess: (updatedReserva) => {
+            queryClient.invalidateQueries({ queryKey: ["reservas", "admin"] });
+            showSuccess("Envio do WhatsApp confirmado!");
+        },
+        onError: (error) => {
+            showError(error.message);
+        }
+    });
+};
+
 
 const deleteReserva = async (id: string): Promise<void> => {
   const { error } = await supabase

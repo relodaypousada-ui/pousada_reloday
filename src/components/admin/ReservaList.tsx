@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { Reserva, useAdminReservas, useDeleteReserva } from "@/integrations/supabase/reservas";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom"; // NOVO IMPORT
+import { Reserva, useAdminReservas, useDeleteReserva, useConfirmWhatsappSent } from "@/integrations/supabase/reservas";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, Eye, Trash2, Search, Send, MessageSquare } from "lucide-react";
+import { Loader2, Eye, Trash2, Search, CheckCircle, MessageSquare } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { showError, showSuccess } from "@/utils/toast";
 import ReservaStatusBadge from "./ReservaStatusBadge";
 import ReservaDetailsDialog from "./ReservaDetailsDialog";
-import { useGlobalConfig } from "@/integrations/supabase/configuracoes"; // NOVO IMPORT
+import { useGlobalConfig } from "@/integrations/supabase/configuracoes"; 
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Helper para formatar a mensagem do WhatsApp
 const generateWhatsAppLink = (reserva: Reserva, config: { chave_pix: string | null, mensagem_padrao_whatsapp: string | null }): string | null => {
@@ -48,12 +50,35 @@ const generateWhatsAppLink = (reserva: Reserva, config: { chave_pix: string | nu
 
 
 const ReservaList: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams(); // NOVO
   const { data: reservas, isLoading, isError, error } = useAdminReservas();
-  const { data: config } = useGlobalConfig(); // Busca configurações
+  const { data: config } = useGlobalConfig(); 
   const deleteMutation = useDeleteReserva();
+  const confirmWhatsappMutation = useConfirmWhatsappSent(); 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReserva, setSelectedReserva] = useState<Reserva | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Efeito para tratar o link de retorno
+  useEffect(() => {
+      const whatsappSent = searchParams.get('whatsapp_sent');
+      const reservaId = searchParams.get('reserva_id');
+      
+      if (whatsappSent === 'true' && reservaId) {
+          // Dispara a mutação para confirmar o envio
+          confirmWhatsappMutation.mutate({ id: reservaId }, {
+              onSuccess: () => {
+                  // Limpa os parâmetros da URL após o sucesso
+                  setSearchParams({}, { replace: true });
+              },
+              onError: (err) => {
+                  showError(`Falha ao registrar confirmação: ${err.message}`);
+                  setSearchParams({}, { replace: true });
+              }
+          });
+      }
+  }, [searchParams, setSearchParams, confirmWhatsappMutation]);
+
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id, {
@@ -78,10 +103,14 @@ const ReservaList: React.FC = () => {
       
       if (link) {
           window.open(link, '_blank');
-          showSuccess("Mensagem de pagamento aberta no WhatsApp.");
+          showSuccess("Mensagem de pagamento aberta no WhatsApp. Clique no check para confirmar o envio.");
       } else {
           showError("Número de WhatsApp do cliente não cadastrado.");
       }
+  };
+  
+  const handleConfirmWhatsappSent = (reservaId: string) => {
+      confirmWhatsappMutation.mutate({ id: reservaId });
   };
 
   const filteredReservas = reservas?.filter(reserva => {
@@ -153,6 +182,7 @@ const ReservaList: React.FC = () => {
             <TableBody>
               {filteredReservas.map((reserva) => {
                 const hasWhatsapp = !!reserva.profiles.whatsapp;
+                const isWhatsappSent = !!reserva.whatsapp_sent_at;
                 
                 return (
                 <TableRow key={reserva.id}>
@@ -167,16 +197,49 @@ const ReservaList: React.FC = () => {
                   <TableCell className="text-right space-x-2 flex justify-end items-center">
                     
                     {/* Botão de Enviar Pagamento via WhatsApp */}
-                    <Button 
-                        variant={hasWhatsapp ? "default" : "secondary"}
-                        size="icon" 
-                        onClick={() => handleSendPaymentLink(reserva)}
-                        aria-label="Enviar Pagamento WhatsApp"
-                        disabled={!hasWhatsapp}
-                        title={hasWhatsapp ? "Enviar link de pagamento via WhatsApp" : "WhatsApp não cadastrado"}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                variant={hasWhatsapp ? "default" : "secondary"}
+                                size="icon" 
+                                onClick={() => handleSendPaymentLink(reserva)}
+                                aria-label="Abrir WhatsApp"
+                                disabled={!hasWhatsapp}
+                                title={hasWhatsapp ? "Abrir link de pagamento via WhatsApp" : "WhatsApp não cadastrado"}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {hasWhatsapp ? "Abrir WhatsApp" : "WhatsApp não cadastrado"}
+                        </TooltipContent>
+                    </Tooltip>
+                    
+                    {/* Botão de Confirmar Envio */}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                variant={isWhatsappSent ? "ghost" : "outline"}
+                                size="icon" 
+                                onClick={() => handleConfirmWhatsappSent(reserva.id)}
+                                aria-label="Confirmar Envio WhatsApp"
+                                disabled={confirmWhatsappMutation.isPending || isWhatsappSent}
+                                title={isWhatsappSent ? `Enviado em ${formatDate(reserva.whatsapp_sent_at!)}` : "Confirmar envio do WhatsApp"}
+                                className={isWhatsappSent ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" : ""}
+                            >
+                              {confirmWhatsappMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : isWhatsappSent ? (
+                                  <CheckCircle className="h-4 w-4" />
+                              ) : (
+                                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {isWhatsappSent ? `Envio confirmado em ${formatDate(reserva.whatsapp_sent_at!)}` : "Confirmar envio do WhatsApp"}
+                        </TooltipContent>
+                    </Tooltip>
                     
                     <Button 
                         variant="outline" 
