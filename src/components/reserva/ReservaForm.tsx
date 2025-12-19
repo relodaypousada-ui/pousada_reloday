@@ -303,7 +303,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Entrada</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={isAdmin || !selectedAcomodacaoId || !checkInDate}>
+                                    <Select onValueChange={field.onChange} value={field.value} >
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione o horário" />
@@ -392,7 +392,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Saída</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={isAdmin || !selectedAcomodacaoId || !checkOutDate}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin || !selectedAcomodacaoId}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione o horário" />

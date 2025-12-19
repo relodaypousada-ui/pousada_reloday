@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogOut, Loader2, User as UserIcon } from "lucide-react";
 import ProfileForm from "@/components/auth/ProfileForm";
 import { useNavigate } from "react-router-dom";
+import UserReservaList from "@/components/reserva/UserReservaList"; // NOVO IMPORT
 
 const AcompanharReserva: React.FC = () => {
   const { user, profile, isLoading, signOut } = useAuth();
@@ -36,7 +37,7 @@ const AcompanharReserva: React.FC = () => {
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Coluna 1: Informações do Perfil e Edição */}
+        {/* Coluna 1: Informações do Perfil e Reservas */}
         <div className="lg:col-span-2 space-y-8">
           {profile ? (
             <ProfileForm profile={profile} />
@@ -47,16 +48,13 @@ const AcompanharReserva: React.FC = () => {
             </Card>
           )}
 
-          {/* Placeholder para Reservas Ativas */}
+          {/* Lista de Reservas */}
           <Card>
             <CardHeader>
-              <CardTitle>Minhas Reservas Ativas</CardTitle>
+              <CardTitle>Minhas Reservas</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Aqui você verá a lista de suas reservas pendentes e confirmadas.
-              </p>
-              <Button variant="link" className="p-0 mt-2">Ver Histórico Completo</Button>
+              <UserReservaList />
             </CardContent>
           </Card>
         </div>

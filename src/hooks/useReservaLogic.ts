@@ -185,7 +185,7 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
 
     // 2. Calcula o horário de check-in mais cedo permitido no dia
-    let earliestCheckInTime = earliestVacantCheckInTime; // Começa com 08:00 (vaga)
+    let earliestCheckInTime = "08:00"; // Começa com 08:00 (vaga) earliestVacantCheckInTime
 
     if (latestCheckOutTime) {
         // Se houver um check-out anterior, o horário mínimo é o check-out + buffer

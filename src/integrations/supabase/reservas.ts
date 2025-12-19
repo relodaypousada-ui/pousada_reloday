@@ -66,6 +66,39 @@ export const useAdminReservas = () => {
   });
 };
 
+// NOVO: Função para buscar reservas do usuário logado
+const getMyReservas = async (userId: string): Promise<Reserva[]> => {
+    // O RLS garante que o usuário só verá suas próprias reservas (policy: auth.uid() = user_id)
+    const { data, error } = await supabase
+        .from("reservas")
+        .select(`
+            *,
+            acomodacoes (titulo, slug)
+        `)
+        .eq("user_id", userId)
+        .order("check_in_date", { ascending: true });
+
+    if (error) {
+        console.error("Erro ao buscar minhas reservas:", error);
+        throw new Error("Não foi possível carregar suas reservas.");
+    }
+
+    // Adiciona um profile mockado para manter a compatibilidade de tipagem, embora não seja usado
+    return data.map(reserva => ({
+        ...reserva,
+        profiles: { full_name: null } 
+    })) as Reserva[];
+};
+
+export const useMyReservas = (userId: string | undefined) => {
+    return useQuery<Reserva[], Error>({
+        queryKey: ["myReservas", userId],
+        queryFn: () => getMyReservas(userId!),
+        enabled: !!userId,
+    });
+};
+
+
 // Função para buscar bloqueios manuais
 export interface BloqueioManual {
     id: string;
