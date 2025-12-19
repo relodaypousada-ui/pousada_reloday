@@ -64,3 +64,43 @@ export const useCountProfiles = () => {
     queryFn: countProfiles,
   });
 };
+
+// 4. Contar Pacotes
+const countPacotes = async (): Promise<number> => {
+  const { count, error } = await supabase
+    .from("pacotes")
+    .select("id", { count: "exact" });
+
+  if (error) {
+    console.error("Erro ao contar pacotes:", error);
+    throw new Error("Falha ao carregar contagem de pacotes.");
+  }
+  return count ?? 0;
+};
+
+export const useCountPacotes = () => {
+  return useQuery<number, Error>({
+    queryKey: ["dashboard", "pacotesCount"],
+    queryFn: countPacotes,
+  });
+};
+
+// 5. Contar Comodidades
+const countComodidades = async (): Promise<number> => {
+  const { count, error } = await supabase
+    .from("comodidades")
+    .select("id", { count: "exact" });
+
+  if (error) {
+    console.error("Erro ao contar comodidades:", error);
+    throw new Error("Falha ao carregar contagem de comodidades.");
+  }
+  return count ?? 0;
+};
+
+export const useCountComodidades = () => {
+  return useQuery<number, Error>({
+    queryKey: ["dashboard", "comodidadesCount"],
+    queryFn: countComodidades,
+  });
+};
