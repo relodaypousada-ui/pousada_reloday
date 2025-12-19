@@ -83,20 +83,23 @@ const DashboardCalendar: React.FC = () => {
   }
 
   return (
-    <div className="p-4 border rounded-xl bg-card shadow-sm">
+    <div className="p-4 border rounded-xl bg-card shadow-sm w-full">
       <h3 className="text-xl font-semibold mb-4 flex items-center">
         <CalendarCheck className="h-5 w-5 mr-2 text-primary" />
         Disponibilidade: {firstAcomodacao.titulo}
       </h3>
-      <Calendar
-        mode="single"
-        locale={ptBR}
-        className="rounded-md border w-full"
-        modifiers={calendarModifiers}
-        modifiersStyles={calendarStyles}
-        // Desabilita a seleção, pois é apenas visualização
-        disabled={() => true} 
-      />
+      {/* Adicionando mx-auto para centralizar e garantindo que o Calendar use a largura total */}
+      <div className="flex justify-center">
+        <Calendar
+          mode="single"
+          locale={ptBR}
+          className="rounded-md border w-full max-w-full"
+          modifiers={calendarModifiers}
+          modifiersStyles={calendarStyles}
+          // Desabilita a seleção, pois é apenas visualização
+          disabled={() => true} 
+        />
+      </div>
       <div className="mt-4 text-sm space-y-1">
         <div className="flex items-center">
             <span className="inline-block w-3 h-3 mr-2 rounded-full bg-destructive/20 border border-destructive"></span>
