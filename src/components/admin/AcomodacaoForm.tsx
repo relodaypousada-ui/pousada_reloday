@@ -261,7 +261,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
                 </div>
               </FormControl>
               <FormDescription>
-                Insira uma URL ou faça upload de uma imagem (webp, jpg, png).
+                Insira uma URL ou faça upload de uma imagem (webp, jpg, png). Recomendado: 1200x800px.
               </FormDescription>
               <FormMessage />
               

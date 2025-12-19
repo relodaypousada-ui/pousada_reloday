@@ -230,7 +230,7 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
                 </div>
               </FormControl>
               <FormDescription>
-                Insira uma URL ou faça upload de uma imagem principal para o pacote.
+                Insira uma URL ou faça upload de uma imagem principal para o pacote. Recomendado: 1200x800px.
               </FormDescription>
               <FormMessage />
               
