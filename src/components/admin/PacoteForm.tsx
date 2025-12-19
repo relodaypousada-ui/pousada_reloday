@@ -181,12 +181,13 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                                {/* Opção para Nenhuma Categoria - Usamos um valor que não é "" */}
+                                <SelectItem value="null-category">Nenhuma</SelectItem>
                                 {CATEGORY_OPTIONS.map(option => (
                                     <SelectItem key={option.value} value={option.value}>
                                         {option.label}
                                     </SelectItem>
                                 ))}
-                                <SelectItem value="">Nenhuma</SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />
