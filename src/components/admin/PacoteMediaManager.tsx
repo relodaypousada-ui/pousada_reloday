@@ -308,12 +308,26 @@ const PacoteMediaManager: React.FC<PacoteMediaManagerProps> = ({ pacoteId, initi
                             <GripVertical className="h-5 w-5 mr-3 text-muted-foreground cursor-grab" />
                             
                             {media.tipo === 'image' ? (
-                                <Image className="h-5 w-5 mr-3 text-primary" />
+                                <div className="flex items-center flex-1 min-w-0">
+                                    {/* Miniatura da Imagem */}
+                                    <div 
+                                        className="h-10 w-10 rounded-md bg-gray-200 bg-cover bg-center mr-3 flex items-center justify-center overflow-hidden"
+                                        style={{ backgroundImage: `url(${media.url})` }}
+                                    >
+                                        {/* Fallback se a imagem não carregar */}
+                                        <Image className="h-5 w-5 text-gray-500 opacity-0" />
+                                    </div>
+                                    <span className="truncate text-sm text-muted-foreground">
+                                        {media.url.substring(0, 60)}...
+                                    </span>
+                                </div>
                             ) : (
-                                <Video className="h-5 w-5 mr-3 text-red-500" />
+                                <div className="flex items-center flex-1 min-w-0">
+                                    <Video className="h-5 w-5 mr-3 text-red-500" />
+                                    <span className="truncate text-sm">{media.url}</span>
+                                </div>
                             )}
                             
-                            <span className="flex-1 truncate text-sm">{media.url}</span>
                             <span className={cn("text-xs font-medium ml-4 px-2 py-1 rounded-full", media.tipo === 'image' ? "bg-blue-100 text-blue-800" : "bg-red-100 text-red-800")}>
                                 {media.tipo === 'image' ? "Imagem" : "Vídeo"}
                             </span>
