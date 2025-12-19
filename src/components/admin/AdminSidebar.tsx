@@ -9,7 +9,7 @@ const adminNavItems = [
   { name: "Acomodações", href: "/admin/acomodacoes", icon: Home },
   { name: "Comodidades", href: "/admin/comodidades", icon: ListChecks },
   { name: "Pacotes", href: "/admin/pacotes", icon: Gift },
-  { name: "Categorias Pacotes", href: "/admin/pacotes/categorias", icon: Tags }, // NOVO ITEM
+  { name: "Categorias Pacotes", href: "/admin/pacotes/categorias", icon: Tags },
   { name: "Slides", href: "/admin/slides", icon: Image },
   { name: "Reservas", href: "/admin/reservas", icon: Calendar },
   { name: "Bloqueios Manuais", href: "/admin/bloqueios", icon: CalendarOff },
@@ -20,7 +20,7 @@ const AdminSidebar: React.FC = () => {
   const location = useLocation();
 
   return (
-    <aside className="w-full md:w-64 bg-sidebar border-r border-sidebar-border p-4 md:min-h-screen">
+    <aside className="w-64 bg-sidebar border-r border-sidebar-border p-4 min-h-full">
       <nav className="space-y-2">
         {adminNavItems.map((item) => {
           const isActive = location.pathname === item.href || 
