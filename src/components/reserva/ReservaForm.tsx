@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, isBefore, startOfDay } from "date-fns";
+import { format, isBefore, startOfDay, isSameDay} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,14 +116,39 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
     }, [initialAcomodacaoId, form]);
     
     // Efeito para ajustar o horário de check-in se o padrão estiver bloqueado
+    // useEffect(() => {
+    //     if (checkInDate && earliestCheckInTime) {
+    //         // Se o horário mais cedo permitido for DEPOIS do padrão
+    //         if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
+    //             form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
+    //         }
+    //     }
+    // }, [checkInDate, earliestCheckInTime, currentStandardCheckInTime, form]);
+
     useEffect(() => {
-        if (checkInDate && earliestCheckInTime) {
-            // Se o horário mais cedo permitido for DEPOIS do padrão
-            if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
-                form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
-            }
+    // Apenas executa se tivermos uma data de check-in e um horário mínimo calculado
+    if (checkInDate && earliestCheckInTime) {
+        let shouldAdjustTime = false;
+        const currentCheckInTime = form.getValues("check_in_time");
+        // if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
+        //         form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
+        //     }
+        
+        // 1. Regra para HOJE: Se a data é hoje E o horário selecionado é anterior ao mínimo permitido
+        if (isSameDay(checkInDate, new Date()) && isTimeBefore(currentCheckInTime, earliestCheckInTime)) {
+            shouldAdjustTime = true;
+        } 
+        // 2. Regra Geral: Se o horário padrão configurado (ex: 14:00) for anterior ao mínimo exigido pela limpeza
+        else if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
+            shouldAdjustTime = true;
         }
-    }, [checkInDate, earliestCheckInTime, currentStandardCheckInTime, form]);
+
+        if (shouldAdjustTime) {
+            // Força o valor para o horário mínimo permitido (que já inclui a regra de "agora")
+            form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
+        }
+    }
+}, [checkInDate, earliestCheckInTime, currentStandardCheckInTime, form, isSameDay, new Date()]);
 
 
     async function onSubmit(values: ReservaFormValues) {
