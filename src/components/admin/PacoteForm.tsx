@@ -95,11 +95,14 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Lógica de tratamento da categoria: se for "null-category" ou "", salva como null
+    const categoriaValue = values.categoria === "null-category" || values.categoria === "" ? null : values.categoria;
+
     const dataToSubmit: PacoteInsert = {
         nome: values.nome,
         descricao: values.descricao || null,
         valor: Number(values.valor),
-        categoria: values.categoria || null,
+        categoria: categoriaValue, // Usando o valor tratado
         imagem_url: values.imagem_url || null,
     };
 
@@ -181,7 +184,7 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                {/* Opção para Nenhuma Categoria - Usamos um valor que não é "" */}
+                                {/* Usamos "null-category" para evitar o erro de Select.Item com valor vazio, mas tratamos como "" no formulário e null no submit */}
                                 <SelectItem value="null-category">Nenhuma</SelectItem>
                                 {CATEGORY_OPTIONS.map(option => (
                                     <SelectItem key={option.value} value={option.value}>
