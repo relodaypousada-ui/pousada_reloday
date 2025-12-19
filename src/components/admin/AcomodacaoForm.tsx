@@ -93,6 +93,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
   
   // Define o caminho de upload baseado no slug (ou um placeholder se for criação)
   const currentSlug = form.watch('slug');
+  const currentImageUrl = form.watch('imagem_url'); // Observa a URL da imagem
   const uploadPath = useMemo(() => `acomodacoes/${currentSlug || 'temp'}`, [currentSlug]);
   const { uploadFile, isUploading } = useStorageUpload(uploadPath);
 
@@ -241,14 +242,12 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
                 <div className="flex space-x-2">
                     <Input placeholder="https://exemplo.com/imagem.jpg" {...field} className="flex-1" />
                     <label htmlFor="main-image-upload" className="cursor-pointer">
-                        <Button asChild variant="outline" disabled={isUploading}>
-                            <div className="flex items-center">
-                                {isUploading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Upload className="h-4 w-4" />
-                                )}
-                            </div>
+                        <Button type="button" variant="outline" disabled={isUploading} size="icon">
+                            {isUploading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Upload className="h-4 w-4" />
+                            )}
                         </Button>
                     </label>
                     <input
@@ -262,15 +261,25 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
                 </div>
               </FormControl>
               <FormDescription>
-                {field.value ? (
-                    <div className="flex items-center mt-2 text-xs text-green-600">
-                        <ImageIcon className="h-3 w-3 mr-1" /> Imagem atual: {field.value.substring(0, 50)}...
-                    </div>
-                ) : (
-                    "Insira uma URL ou faça upload de uma imagem (webp, jpg, png)."
-                )}
+                Insira uma URL ou faça upload de uma imagem (webp, jpg, png).
               </FormDescription>
               <FormMessage />
+              
+              {/* Visualização da Imagem */}
+              {currentImageUrl && (
+                  <div className="mt-4 p-2 border rounded-lg bg-muted/50">
+                      <p className="text-sm font-medium mb-2 flex items-center">
+                          <ImageIcon className="h-4 w-4 mr-2 text-primary" /> Pré-visualização da Imagem Principal:
+                      </p>
+                      <div className="w-full h-40 overflow-hidden rounded-md">
+                          <img 
+                              src={currentImageUrl} 
+                              alt="Pré-visualização da imagem principal" 
+                              className="w-full h-full object-cover"
+                          />
+                      </div>
+                  </div>
+              )}
             </FormItem>
           )}
         />
