@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react"; // CORREÇÃO: useMemo importado
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -114,11 +114,6 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
             form.setValue("acomodacao_id", initialAcomodacaoId, { shouldValidate: true });
         }
     }, [initialAcomodacaoId, form]);
-    
-    // REMOVENDO A LÓGICA DE AJUSTE DE HORÁRIO QUE ESTAVA FORÇANDO O VALOR PARA 14:00
-    // O hook useReservaLogic agora cuida da validação e da lista de opções desabilitadas.
-    // O valor inicial é definido no defaultValues. Se o usuário selecionar um horário inválido,
-    // a validação do hook (useEffect dentro de useReservaLogic) irá disparar um erro.
     
     async function onSubmit(values: ReservaFormValues) {
         // ... (Validações e lógica de submissão inalterada)
@@ -308,7 +303,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Entrada</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin || !selectedAcomodacaoId || !checkInDate}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isAdmin || !selectedAcomodacaoId || !checkInDate}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione o horário" />
@@ -396,7 +391,7 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center"><Clock className="h-4 w-4 mr-2" /> Horário de Saída</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={isPending || isAdmin || !selectedAcomodacaoId || !checkOutDate}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isAdmin || !selectedAcomodacaoId || !checkOutDate}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione o horário" />
