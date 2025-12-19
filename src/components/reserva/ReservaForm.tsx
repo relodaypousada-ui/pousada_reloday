@@ -115,29 +115,11 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
         }
     }, [initialAcomodacaoId, form]);
     
-    useEffect(() => {
-    // Apenas executa se tivermos uma data de check-in e um horário mínimo calculado
-    if (checkInDate && earliestCheckInTime) {
-        let shouldAdjustTime = false;
-        const currentCheckInTime = form.getValues("check_in_time");
-        
-        // 1. Regra para HOJE: Se a data é hoje E o horário selecionado é anterior ao mínimo permitido
-        if (isSameDay(checkInDate, new Date()) && isTimeBefore(currentCheckInTime, earliestCheckInTime)) {
-            shouldAdjustTime = true;
-        } 
-        // 2. Regra Geral: Se o horário padrão configurado (ex: 14:00) for anterior ao mínimo exigido pela limpeza
-        else if (isTimeBefore(currentStandardCheckInTime, earliestCheckInTime)) {
-            shouldAdjustTime = true;
-        }
-
-        if (shouldAdjustTime) {
-            // Força o valor para o horário mínimo permitido (que já inclui a regra de "agora")
-            form.setValue("check_in_time", earliestCheckInTime, { shouldValidate: true, shouldDirty: true });
-        }
-    }
-}, [checkInDate, earliestCheckInTime, currentStandardCheckInTime, form, isSameDay, new Date()]);
-
-
+    // REMOVENDO A LÓGICA DE AJUSTE DE HORÁRIO QUE ESTAVA FORÇANDO O VALOR PARA 14:00
+    // O hook useReservaLogic agora cuida da validação e da lista de opções desabilitadas.
+    // O valor inicial é definido no defaultValues. Se o usuário selecionar um horário inválido,
+    // a validação do hook (useEffect dentro de useReservaLogic) irá disparar um erro.
+    
     async function onSubmit(values: ReservaFormValues) {
         // ... (Validações e lógica de submissão inalterada)
         if (isAdmin) {
@@ -166,9 +148,10 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
              return;
         }
         
+        // Verifica se o horário selecionado está bloqueado (usando a lista filtrada do hook)
         const isTimeBlocked = filteredCheckInTimeOptions.find(opt => opt.time === values.check_in_time)?.isBlocked;
         if (isTimeBlocked) {
-             showError(`O horário de check-in selecionado (${values.check_in_time}) está bloqueado.`);
+             showError(`O horário de check-in selecionado (${values.check_in_time}) está bloqueado. O check-in só é permitido a partir das ${earliestCheckInTime}.`);
              return;
         }
         
@@ -349,6 +332,11 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                     {latestCheckOutTime && checkInDate && (
                                         <p className="text-xs text-yellow-700 font-medium">
                                             Check-out anterior em {format(checkInDate, "PPP", { locale: ptBR })} às {latestCheckOutTime}. Buffer de limpeza de {formatBufferHours(cleaningBufferHours)}. Check-in liberado a partir de {earliestCheckInTime}.
+                                        </p>
+                                    )}
+                                    {!latestCheckOutTime && checkInDate && !isSameDay(checkInDate, new Date()) && (
+                                        <p className="text-xs text-green-700 font-medium">
+                                            Acomodação vaga. Check-in liberado a partir de {earliestCheckInTime}.
                                         </p>
                                     )}
                                 </FormItem>
