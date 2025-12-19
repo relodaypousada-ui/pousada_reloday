@@ -24,6 +24,7 @@ const profileSchema = z.object({
     message: "O nome completo deve ter pelo menos 2 caracteres.",
   }).optional().or(z.literal("")),
   billing_address: z.string().optional().or(z.literal("")),
+  whatsapp: z.string().optional().or(z.literal("")), // NOVO CAMPO
 });
 
 interface ProfileFormProps {
@@ -40,6 +41,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile }) => {
         defaultValues: {
             full_name: profile.full_name || "",
             billing_address: profile.billing_address || "",
+            whatsapp: profile.whatsapp || "", // NOVO DEFAULT
         },
         mode: "onChange",
     });
@@ -52,8 +54,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile }) => {
         }
 
         const updates: ProfileUpdate = {
-            full_name: values.full_name || "",
-            billing_address: values.billing_address || "",
+            full_name: values.full_name || null,
+            billing_address: values.billing_address || null,
+            whatsapp: values.whatsapp || null, // NOVO CAMPO
         };
 
         updateProfile({ userId: user.id, updates }, {
@@ -88,6 +91,19 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile }) => {
                                         <FormLabel>Nome Completo</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Seu nome completo" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="whatsapp"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>WhatsApp (DDD + Número)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ex: 5511987654321" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

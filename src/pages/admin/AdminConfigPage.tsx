@@ -3,11 +3,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Loader2 } from "lucide-react";
+import { Settings, Loader2, CreditCard, MessageSquare } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -26,6 +26,8 @@ const configSchema = z.object({
   endereco_fisico: z.string().optional().or(z.literal("")),
   titulo_site: z.string().min(1, "O título é obrigatório.").optional().or(z.literal("")),
   meta_descricao: z.string().optional().or(z.literal("")),
+  chave_pix: z.string().optional().or(z.literal("")), // NOVO
+  mensagem_padrao_whatsapp: z.string().optional().or(z.literal("")), // NOVO
 });
 
 type ConfigFormValues = z.infer<typeof configSchema>;
@@ -42,6 +44,8 @@ const AdminConfigPage: React.FC = () => {
       endereco_fisico: "",
       titulo_site: "",
       meta_descricao: "",
+      chave_pix: "", // NOVO
+      mensagem_padrao_whatsapp: "", // NOVO
     },
     mode: "onChange",
   });
@@ -55,6 +59,8 @@ const AdminConfigPage: React.FC = () => {
         endereco_fisico: config.endereco_fisico || "",
         titulo_site: config.titulo_site || "",
         meta_descricao: config.meta_descricao || "",
+        chave_pix: config.chave_pix || "", // NOVO
+        mensagem_padrao_whatsapp: config.mensagem_padrao_whatsapp || "", // NOVO
       });
     }
   }, [config, form]);
@@ -72,6 +78,14 @@ const AdminConfigPage: React.FC = () => {
     const updates: ConfiguracoesUpdate = {
       titulo_site: values.titulo_site || null,
       meta_descricao: values.meta_descricao || null,
+    };
+    updateMutation.mutate(updates);
+  };
+  
+  const onSubmitPagamento = (values: ConfigFormValues) => {
+    const updates: ConfiguracoesUpdate = {
+      chave_pix: values.chave_pix || null,
+      mensagem_padrao_whatsapp: values.mensagem_padrao_whatsapp || null,
     };
     updateMutation.mutate(updates);
   };
@@ -158,6 +172,64 @@ const AdminConfigPage: React.FC = () => {
                     disabled={updateMutation.isPending || !form.formState.isDirty}
                   >
                     {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Contato"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+          
+          {/* NOVO: Formulário de Pagamento e Comunicação */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center">
+                <CreditCard className="h-6 w-6 mr-2 text-muted-foreground" />
+                Pagamento e Comunicação
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmitPagamento)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="chave_pix"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chave PIX para Pagamentos</FormLabel>
+                        <FormControl>
+                          <Input placeholder="ex: 123.456.789-00 ou email@pix.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="mensagem_padrao_whatsapp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center">
+                            <MessageSquare className="h-4 w-4 mr-1" /> Mensagem Padrão WhatsApp (Confirmação)
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Olá [NOME], sua reserva [ID_RESERVA] na [ACOMODACAO] foi solicitada. O valor total é [VALOR_TOTAL]. Para confirmar, realize o pagamento via PIX: [CHAVE_PIX]." 
+                            {...field} 
+                            rows={4}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                            Use placeholders como [NOME], [ID_RESERVA], [ACOMODACAO], [VALOR_TOTAL], [CHAVE_PIX].
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="mt-4" 
+                    disabled={updateMutation.isPending || !form.formState.isDirty}
+                  >
+                    {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Pagamento"}
                   </Button>
                 </form>
               </Form>

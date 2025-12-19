@@ -8,12 +8,14 @@ export interface Profile {
   billing_address: string | null;
   is_admin: boolean | null;
   updated_at: string | null;
+  whatsapp: string | null; // NOVO CAMPO
 }
 
 // Tipagem para os dados que podem ser atualizados
 export type ProfileUpdate = {
-  full_name: string;
-  billing_address: string;
+  full_name?: string | null; // Tornando opcional e permitindo null
+  billing_address?: string | null; // Tornando opcional e permitindo null
+  whatsapp?: string | null; // NOVO CAMPO
 };
 
 // Função para buscar todos os perfis (requer permissão de administrador via RLS)
@@ -71,9 +73,14 @@ interface UpdateProfileArgs {
 }
 
 const updateProfile = async ({ userId, updates }: UpdateProfileArgs): Promise<Profile> => {
+  // Filtra campos vazios para salvar como NULL no Supabase, exceto se for explicitamente uma string vazia que queremos manter.
+  const updatesToSubmit: ProfileUpdate = Object.fromEntries(
+    Object.entries(updates).map(([key, value]) => [key, value === "" ? null : value])
+  );
+
   const { data, error } = await supabase
     .from("profiles")
-    .update(updates)
+    .update(updatesToSubmit)
     .eq("id", userId)
     .select()
     .single();

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,7 +15,7 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-import { Calendar as CalendarIcon, Loader2, Users, Home, LogIn, ShieldAlert, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Users, Home, LogIn, ShieldAlert, Clock, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ const calendarStyles = {
 };
 
 const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
-    const { user, isAdmin, isLoading: isLoadingAuth } = useAuth();
+    const { user, profile, isAdmin, isLoading: isLoadingAuth } = useAuth(); // Adicionado profile
     const navigate = useNavigate();
     const createReservaMutation = useCreateReserva();
 
@@ -116,7 +116,6 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
     }, [initialAcomodacaoId, form]);
     
     async function onSubmit(values: ReservaFormValues) {
-        // ... (Validações e lógica de submissão inalterada)
         if (isAdmin) {
              showError("Administradores não podem criar reservas através desta interface.");
              return;
@@ -126,6 +125,12 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
              showError("Você precisa estar logado para fazer uma reserva.");
              navigate("/login");
              return;
+        }
+        
+        // NOVO: Validação de WhatsApp
+        if (!profile?.whatsapp) {
+            showError("Por favor, preencha seu número de WhatsApp no seu perfil para contato sobre a reserva.");
+            return;
         }
 
         if (!selectedAcomodacao) {
@@ -206,13 +211,16 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                 form.handleSubmit(onSubmit)();
             }
         };
+    } else if (user && !profile?.whatsapp) {
+        buttonText = "Preencha o WhatsApp no Perfil";
+        buttonDisabled = true;
     }
 
     return (
         <Form {...form}>
-            <form onSubmit={user && !isAdmin ? form.handleSubmit(onSubmit) : (e) => {
+            <form onSubmit={user && !isAdmin && profile?.whatsapp ? form.handleSubmit(onSubmit) : (e) => {
                 e.preventDefault();
-                if (!user) {
+                if (!user || !profile?.whatsapp) {
                     buttonAction();
                 }
             }} className="space-y-6">
@@ -477,13 +485,23 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                             Para **Solicitar Reserva**, você deve estar logado.
                         </p>
                     </div>
+                ) : user && !profile?.whatsapp ? (
+                    <div className="p-4 bg-red-100 border border-red-300 rounded-lg text-center text-red-700">
+                        <p className="font-semibold flex items-center justify-center">
+                            <MessageSquare className="h-5 w-5 mr-2" />
+                            WhatsApp Necessário
+                        </p>
+                        <p className="text-sm mt-1">
+                            Por favor, preencha seu número de WhatsApp no <Link to="/acompanhar-reserva" className="font-bold underline">seu perfil</Link> para que possamos entrar em contato sobre a reserva.
+                        </p>
+                    </div>
                 ) : null}
                 
                 <Button 
-                    type={user && !isAdmin ? "submit" : "button"}
+                    type={user && !isAdmin && profile?.whatsapp ? "submit" : "button"}
                     className="w-full" 
                     disabled={buttonDisabled}
-                    onClick={!user && !isAdmin ? buttonAction : undefined}
+                    onClick={!user || !profile?.whatsapp ? buttonAction : undefined}
                 >
                     {isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Reserva, useAdminReservas, useDeleteReserva } from "@/integrations/supabase/reservas";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, Eye, Trash2, Search } from "lucide-react";
+import { Loader2, Eye, Trash2, Search, Send, MessageSquare } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,12 +15,41 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 import ReservaStatusBadge from "./ReservaStatusBadge";
 import ReservaDetailsDialog from "./ReservaDetailsDialog";
+import { useGlobalConfig } from "@/integrations/supabase/configuracoes"; // NOVO IMPORT
+
+// Helper para formatar a mensagem do WhatsApp
+const generateWhatsAppLink = (reserva: Reserva, config: { chave_pix: string | null, mensagem_padrao_whatsapp: string | null }): string | null => {
+    const whatsappNumber = reserva.profiles.whatsapp;
+    if (!whatsappNumber) return null;
+
+    const nomeCliente = reserva.profiles.full_name || "Cliente";
+    const acomodacaoTitulo = reserva.acomodacoes.titulo;
+    const valorTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(reserva.valor_total);
+    const chavePix = config.chave_pix || "Chave PIX não configurada";
+    
+    let messageTemplate = config.mensagem_padrao_whatsapp || 
+        "Olá [NOME], sua reserva [ID_RESERVA] na [ACOMODACAO] foi solicitada. O valor total é [VALOR_TOTAL]. Para confirmar, realize o pagamento via PIX: [CHAVE_PIX].";
+
+    const message = messageTemplate
+        .replace(/\[NOME\]/g, nomeCliente)
+        .replace(/\[ID_RESERVA\]/g, reserva.id.substring(0, 8))
+        .replace(/\[ACOMODACAO\]/g, acomodacaoTitulo)
+        .replace(/\[VALOR_TOTAL\]/g, valorTotal)
+        .replace(/\[CHAVE_PIX\]/g, chavePix);
+
+    // Remove caracteres não numéricos do número de telefone para o link
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+};
+
 
 const ReservaList: React.FC = () => {
   const { data: reservas, isLoading, isError, error } = useAdminReservas();
+  const { data: config } = useGlobalConfig(); // Busca configurações
   const deleteMutation = useDeleteReserva();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReserva, setSelectedReserva] = useState<Reserva | null>(null);
@@ -37,6 +66,22 @@ const ReservaList: React.FC = () => {
   const handleOpenDetails = (reserva: Reserva) => {
       setSelectedReserva(reserva);
       setIsDialogOpen(true);
+  };
+
+  const handleSendPaymentLink = (reserva: Reserva) => {
+      if (!config) {
+          showError("Configurações do site não carregadas.");
+          return;
+      }
+      
+      const link = generateWhatsAppLink(reserva, config);
+      
+      if (link) {
+          window.open(link, '_blank');
+          showSuccess("Mensagem de pagamento aberta no WhatsApp.");
+      } else {
+          showError("Número de WhatsApp do cliente não cadastrado.");
+      }
   };
 
   const filteredReservas = reservas?.filter(reserva => {
@@ -106,7 +151,10 @@ const ReservaList: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredReservas.map((reserva) => (
+              {filteredReservas.map((reserva) => {
+                const hasWhatsapp = !!reserva.profiles.whatsapp;
+                
+                return (
                 <TableRow key={reserva.id}>
                   <TableCell className="text-xs text-muted-foreground">{reserva.id.substring(0, 8)}</TableCell>
                   <TableCell className="font-medium">{reserva.acomodacoes.titulo}</TableCell>
@@ -116,7 +164,20 @@ const ReservaList: React.FC = () => {
                   <TableCell className="text-center">
                     <ReservaStatusBadge status={reserva.status} />
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-right space-x-2 flex justify-end items-center">
+                    
+                    {/* Botão de Enviar Pagamento via WhatsApp */}
+                    <Button 
+                        variant={hasWhatsapp ? "default" : "secondary"}
+                        size="icon" 
+                        onClick={() => handleSendPaymentLink(reserva)}
+                        aria-label="Enviar Pagamento WhatsApp"
+                        disabled={!hasWhatsapp}
+                        title={hasWhatsapp ? "Enviar link de pagamento via WhatsApp" : "WhatsApp não cadastrado"}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                    
                     <Button 
                         variant="outline" 
                         size="icon" 
@@ -152,7 +213,7 @@ const ReservaList: React.FC = () => {
                     </AlertDialog>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </div>

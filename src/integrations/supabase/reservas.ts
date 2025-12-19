@@ -23,6 +23,7 @@ export interface Reserva {
   };
   profiles: {
     full_name: string | null;
+    whatsapp: string | null; // NOVO: Adicionando whatsapp
   };
 }
 
@@ -47,7 +48,7 @@ const getAllReservas = async (): Promise<Reserva[]> => {
     .select(`
       *,
       acomodacoes (titulo, slug),
-      profiles (full_name)
+      profiles (full_name, whatsapp)
     `)
     .order("created_at", { ascending: false });
 
@@ -86,9 +87,10 @@ const getMyReservas = async (userId: string): Promise<Reserva[]> => {
     // Adiciona um profile mockado para manter a compatibilidade de tipagem, embora não seja usado
     return data.map(reserva => ({
         ...reserva,
-        profiles: { full_name: null } 
+        profiles: { full_name: null, whatsapp: null } // Adicionando whatsapp null para compatibilidade
     })) as Reserva[];
 };
+
 
 export const useMyReservas = (userId: string | undefined) => {
     return useQuery<Reserva[], Error>({
@@ -242,7 +244,7 @@ const createReserva = async (newReserva: ReservaInsert): Promise<Reserva> => {
     .select(`
       *,
       acomodacoes (titulo, slug),
-      profiles (full_name)
+      profiles (full_name, whatsapp)
     `)
     .single();
 
@@ -286,7 +288,7 @@ const updateReserva = async ({ id, updates }: UpdateReservaArgs): Promise<Reserv
     .select(`
       *,
       acomodacoes (titulo, slug),
-      profiles (full_name)
+      profiles (full_name, whatsapp)
     `)
     .single();
 
