@@ -1,9 +1,8 @@
 import React from "react";
-import { Pacote, useAdminPacotes, useDeletePacote } from "@/integrations/supabase/pacotes";
+import { CategoriaPacote, useAllCategoriasPacotes, useDeleteCategoriaPacote } from "@/integrations/supabase/categoriasPacotes";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Loader2, Edit, Trash2, Tag } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,13 +16,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { showError } from "@/utils/toast";
 
-interface PacoteListProps {
-    onEdit: (pacote: Pacote) => void;
+interface CategoriaPacoteListProps {
+    onEdit: (categoria: CategoriaPacote) => void;
 }
 
-const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
-  const { data: pacotes, isLoading, isError, error } = useAdminPacotes();
-  const deleteMutation = useDeletePacote();
+const CategoriaPacoteList: React.FC<CategoriaPacoteListProps> = ({ onEdit }) => {
+  const { data: categorias, isLoading, isError, error } = useAllCategoriasPacotes();
+  const deleteMutation = useDeleteCategoriaPacote();
 
   const handleDelete = (id: string, nome: string) => {
     deleteMutation.mutate(id, {
@@ -31,10 +30,6 @@ const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
             showError(`Falha ao deletar ${nome}: ${err.message}`);
         }
     });
-  };
-  
-  const formatCurrency = (value: number) => {
-      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
   if (isLoading) {
@@ -48,7 +43,7 @@ const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
   if (isError) {
     return (
       <div className="text-center p-6 bg-destructive/10 border border-destructive rounded-lg">
-        <p className="text-destructive font-medium">Erro ao carregar pacotes:</p>
+        <p className="text-destructive font-medium">Erro ao carregar categorias:</p>
         <p className="text-sm text-destructive/90 mt-1">
           {error.message}
         </p>
@@ -56,10 +51,10 @@ const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
     );
   }
 
-  if (!pacotes || pacotes.length === 0) {
+  if (!categorias || categorias.length === 0) {
     return (
       <div className="text-center p-6 text-muted-foreground">
-        Nenhum pacote cadastrado. Clique em "Adicionar Pacote" para começar.
+        Nenhuma categoria cadastrada. Clique em "Adicionar Categoria" para começar.
       </div>
     );
   }
@@ -69,33 +64,25 @@ const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[50px]">#</TableHead>
             <TableHead>Nome</TableHead>
-            <TableHead>Categoria</TableHead>
-            <TableHead className="text-right">Valor</TableHead>
+            <TableHead>Slug</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {pacotes.map((pacote) => (
-            <TableRow key={pacote.id}>
-              <TableCell className="font-medium">{pacote.nome}</TableCell>
-              <TableCell>
-                {pacote.categorias_pacotes?.nome ? (
-                    <Badge variant="secondary" className="capitalize">
-                        <Tag className="h-3 w-3 mr-1" /> {pacote.categorias_pacotes.nome}
-                    </Badge>
-                ) : (
-                    <span className="text-muted-foreground text-sm">N/A</span>
-                )}
+          {categorias.map((categoria) => (
+            <TableRow key={categoria.id}>
+              <TableCell className="text-center">
+                <Tag className="h-4 w-4 text-muted-foreground" />
               </TableCell>
-              <TableCell className="text-right font-semibold text-green-600">
-                {formatCurrency(pacote.valor)}
-              </TableCell>
+              <TableCell className="font-medium">{categoria.nome}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{categoria.slug}</TableCell>
               <TableCell className="text-right space-x-2">
                 <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() => onEdit(pacote)}
+                    onClick={() => onEdit(categoria)}
                     aria-label="Editar"
                 >
                   <Edit className="h-4 w-4" />
@@ -111,13 +98,13 @@ const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Esta ação removerá permanentemente o pacote "{pacote.nome}".
+                        Esta ação removerá permanentemente a categoria "{categoria.nome}". Pacotes associados terão a categoria removida.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
                       <AlertDialogAction 
-                        onClick={() => handleDelete(pacote.id, pacote.nome)}
+                        onClick={() => handleDelete(categoria.id, categoria.nome)}
                         disabled={deleteMutation.isPending}
                       >
                         {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Deletar"}
@@ -134,4 +121,4 @@ const PacoteList: React.FC<PacoteListProps> = ({ onEdit }) => {
   );
 };
 
-export default PacoteList;
+export default CategoriaPacoteList;

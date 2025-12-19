@@ -27,7 +27,8 @@ import AdminConfigPage from "./pages/admin/AdminConfigPage";
 import AdminSlidesPage from "./pages/admin/AdminSlidesPage";
 import AdminReservasPage from "./pages/admin/AdminReservasPage";
 import AdminBloqueiosPage from "./pages/admin/AdminBloqueiosPage";
-import AdminPacotesPage from "./pages/admin/AdminPacotesPage"; // NOVO IMPORT
+import AdminPacotesPage from "./pages/admin/AdminPacotesPage";
+import AdminCategoriasPacotesPage from "./pages/admin/AdminCategoriasPacotesPage"; // NOVO IMPORT
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -78,7 +79,8 @@ const App = () => (
             <Route path="/admin/clientes" element={<AdminLayoutWrapper element={<AdminUsersPage />} />} />
             <Route path="/admin/acomodacoes" element={<AdminLayoutWrapper element={<AdminAcomodacoesPage />} />} />
             <Route path="/admin/comodidades" element={<AdminLayoutWrapper element={<AdminComodidadesPage />} />} />
-            <Route path="/admin/pacotes" element={<AdminLayoutWrapper element={<AdminPacotesPage />} />} /> {/* NOVA ROTA */}
+            <Route path="/admin/pacotes" element={<AdminLayoutWrapper element={<AdminPacotesPage />} />} />
+            <Route path="/admin/pacotes/categorias" element={<AdminLayoutWrapper element={<AdminCategoriasPacotesPage />} />} /> {/* NOVA ROTA */}
             <Route path="/admin/slides" element={<AdminLayoutWrapper element={<AdminSlidesPage />} />} />
             <Route path="/admin/reservas" element={<AdminLayoutWrapper element={<AdminReservasPage />} />} />
             <Route path="/admin/bloqueios" element={<AdminLayoutWrapper element={<AdminBloqueiosPage />} />} />

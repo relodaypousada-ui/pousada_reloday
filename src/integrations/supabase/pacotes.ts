@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
+import { CategoriaPacote } from "./categoriasPacotes"; // Importando a nova tipagem
 
 export interface PacoteMidia {
   id: string;
@@ -14,26 +15,32 @@ export interface Pacote {
   nome: string;
   descricao: string | null;
   valor: number;
-  categoria: string | null;
-  imagem_url: string | null; // NOVO CAMPO
+  categoria_id: string | null; // NOVO CAMPO: Referência ao ID da categoria
+  imagem_url: string | null;
   created_at: string;
-  midia?: PacoteMidia[]; // Mídias adicionais
+  midia?: PacoteMidia[];
+  // Dados de join para exibição
+  categorias_pacotes?: CategoriaPacote | null;
 }
 
 // Tipagem para inserção/atualização
-export type PacoteInsert = Omit<Pacote, 'id' | 'created_at' | 'midia'>;
+export type PacoteInsert = Omit<Pacote, 'id' | 'created_at' | 'midia' | 'categorias_pacotes'>;
 export type PacoteUpdate = Partial<PacoteInsert>;
 
 // --- Query Hooks ---
+
+// Fragmento de select para join de categoria
+const CATEGORIA_SELECT_FRAGMENT = `
+  *,
+  categorias_pacotes (id, nome, slug),
+  midia:pacotes_midia (id, url, tipo, ordem)
+`;
 
 // Função para buscar TODOS os pacotes (Admin)
 const getAdminPacotes = async (): Promise<Pacote[]> => {
   const { data, error } = await supabase
     .from("pacotes")
-    .select(`
-      *,
-      midia:pacotes_midia (id, url, tipo, ordem)
-    `)
+    .select(CATEGORIA_SELECT_FRAGMENT)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -59,10 +66,7 @@ export const useAdminPacotes = () => {
 const getPacoteById = async (id: string): Promise<Pacote | null> => {
   const { data, error } = await supabase
     .from("pacotes")
-    .select(`
-      *,
-      midia:pacotes_midia (id, url, tipo, ordem)
-    `)
+    .select(CATEGORIA_SELECT_FRAGMENT)
     .eq("id", id)
     .single();
 
@@ -97,7 +101,7 @@ const createPacote = async (newPacote: PacoteInsert): Promise<Pacote> => {
   const { data, error } = await supabase
     .from("pacotes")
     .insert(newPacote)
-    .select()
+    .select(CATEGORIA_SELECT_FRAGMENT)
     .single();
 
   if (error) {
@@ -132,7 +136,7 @@ const updatePacote = async ({ id, updates }: UpdatePacoteArgs): Promise<Pacote> 
     .from("pacotes")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select(CATEGORIA_SELECT_FRAGMENT)
     .single();
 
   if (error) {

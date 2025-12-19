@@ -21,14 +21,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PacoteMediaManager from "./PacoteMediaManager";
 import { useStorageUpload } from "@/hooks/useStorageUpload";
 import { showSuccess } from "@/utils/toast";
+import { useAllCategoriasPacotes } from "@/integrations/supabase/categoriasPacotes"; // NOVO IMPORT
 
 // Schema de Validação
 const formSchema = z.object({
   nome: z.string().min(3, "O nome é obrigatório."),
   descricao: z.string().optional().or(z.literal("")),
   valor: z.coerce.number().min(0.01, "O valor deve ser maior que zero."),
-  categoria: z.string().optional().or(z.literal("")),
-  imagem_url: z.string().url("URL de imagem inválida.").optional().or(z.literal("")), // NOVO CAMPO
+  categoria_id: z.string().optional().or(z.literal("")), // Mudança para categoria_id
+  imagem_url: z.string().url("URL de imagem inválida.").optional().or(z.literal("")),
 });
 
 interface PacoteFormProps {
@@ -36,21 +37,14 @@ interface PacoteFormProps {
   onSuccess: () => void;
 }
 
-const CATEGORY_OPTIONS = [
-    { value: "promocional", label: "Promocional" },
-    { value: "feriado", label: "Feriado" },
-    { value: "especial", label: "Especial" },
-    { value: "padrao", label: "Padrão" },
-];
-
 const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
   const isEditing = !!initialData;
   const pacoteId = initialData?.id;
   
-  // Se estiver editando, buscamos os dados detalhados (incluindo mídia)
+  // Busca categorias e detalhes do pacote
+  const { data: allCategorias, isLoading: isLoadingCategorias } = useAllCategoriasPacotes();
   const { data: fetchedPacote, isLoading: isLoadingPacote } = usePacote(pacoteId || "");
   
-  // Usamos os dados buscados se estivermos editando
   const currentPacote = isEditing ? fetchedPacote : initialData;
 
   const createMutation = useCreatePacote();
@@ -63,14 +57,14 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
       nome: currentPacote?.nome || "",
       descricao: currentPacote?.descricao || "",
       valor: currentPacote?.valor || 0.01,
-      categoria: currentPacote?.categoria || "",
+      categoria_id: currentPacote?.categoria_id || "", // Usando categoria_id
       imagem_url: currentPacote?.imagem_url || "",
     },
     values: { // Sincroniza com os dados do React Query
         nome: currentPacote?.nome || "",
         descricao: currentPacote?.descricao || "",
         valor: currentPacote?.valor || 0.01,
-        categoria: currentPacote?.categoria || "",
+        categoria_id: currentPacote?.categoria_id || "", // Usando categoria_id
         imagem_url: currentPacote?.imagem_url || "",
     },
     resetOptions: {
@@ -78,7 +72,6 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
     }
   });
   
-  // Define o caminho de upload baseado no ID do pacote
   const uploadPath = useMemo(() => `pacotes/${pacoteId || 'temp'}`, [pacoteId]);
   const { uploadFile, isUploading } = useStorageUpload(uploadPath);
 
@@ -95,14 +88,14 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Lógica de tratamento da categoria: se for "null-category" ou "", salva como null
-    const categoriaValue = values.categoria === "null-category" || values.categoria === "" ? null : values.categoria;
+    // Lógica de tratamento da categoria: se for "" ou "null-category", salva como null
+    const categoriaIdValue = values.categoria_id === "null-category" || values.categoria_id === "" ? null : values.categoria_id;
 
     const dataToSubmit: PacoteInsert = {
         nome: values.nome,
         descricao: values.descricao || null,
         valor: Number(values.valor),
-        categoria: categoriaValue, // Usando o valor tratado
+        categoria_id: categoriaIdValue, // Usando o ID tratado
         imagem_url: values.imagem_url || null,
     };
 
@@ -173,22 +166,25 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
             />
             <FormField
                 control={form.control}
-                name="categoria"
+                name="categoria_id"
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Categoria (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value || "null-category"} 
+                            disabled={isLoadingCategorias}
+                        >
                             <FormControl>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecione a categoria" />
+                                    <SelectValue placeholder={isLoadingCategorias ? "Carregando categorias..." : "Selecione a categoria"} />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                {/* Usamos "null-category" para evitar o erro de Select.Item com valor vazio, mas tratamos como "" no formulário e null no submit */}
                                 <SelectItem value="null-category">Nenhuma</SelectItem>
-                                {CATEGORY_OPTIONS.map(option => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
+                                {allCategorias?.map(categoria => (
+                                    <SelectItem key={categoria.id} value={categoria.id}>
+                                        {categoria.nome}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
