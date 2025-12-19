@@ -310,12 +310,13 @@ const ReservaForm: React.FC<ReservaFormProps> = ({ initialAcomodacaoId }) => {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
+                                            {/* REMOVENDO A DESABILITAÇÃO DOS ITENS */}
                                             {filteredCheckInTimeOptions.map(({ time, isBlocked }) => (
                                                 <SelectItem 
                                                     key={time} 
                                                     value={time} 
-                                                    disabled={isBlocked}
-                                                    className={cn(isBlocked && "text-destructive/70 bg-destructive/10 cursor-not-allowed")}
+                                                    // Removendo disabled={isBlocked}
+                                                    className={cn(isBlocked && "text-destructive/70 bg-destructive/10")}
                                                 >
                                                     {time} {isBlocked && "(Bloqueado)"}
                                                 </SelectItem>
