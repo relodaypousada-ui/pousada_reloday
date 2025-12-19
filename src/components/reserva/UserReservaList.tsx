@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import ReservaStatusBadge from "../admin/ReservaStatusBadge";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button"; // IMPORT CORRIGIDO
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
