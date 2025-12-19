@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Users, Home, Calendar, ArrowRight, Loader2, Gift, ListChecks } from "lucide-react";
+import { Settings, Users, Home, Calendar, ArrowRight, Loader2, Gift, ListChecks, CalendarOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCountPendingReservas, useCountAcomodacoes, useCountProfiles, useCountPacotes, useCountComodidades } from "@/integrations/supabase/dashboard";
 import DashboardCalendar from "@/components/admin/DashboardCalendar";
