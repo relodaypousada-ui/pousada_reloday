@@ -83,7 +83,7 @@ export const formatBufferHours = (hours: number): string => {
 
 
 /**
- * FUNÇÃO CORRIGIDA E INCLUÍDA: Retorna o próximo horário válido no intervalo de 30 minutos a partir de agora.
+ * Retorna o próximo horário válido no intervalo de 30 minutos a partir de agora.
  */
 export const getNextHalfHourTime = (date: Date): string => {
     const now = new Date(); 
@@ -143,7 +143,6 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
     
     const selectedAcomodacaoId = form.watch("acomodacao_id");
     const checkInDate = form.watch("check_in_date");
-    const checkOutDate = form.watch("check_out_date");
     const checkInTime = form.watch("check_in_time");
 
     const selectedAcomodacao = useMemo(() => 
@@ -159,16 +158,19 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
     const cleaningBufferHours = selectedAcomodacao?.cleaning_buffer_hours ?? DEFAULT_CLEANING_BUFFER_HOURS; 
     
     // Horário mais cedo de check-in quando o quarto está vago.
-    const earliestVacantCheckInTime = selectedAcomodacao?.earliest_check_in_time ?? EARLIEST_VACANT_CHECK_IN_TIME_FALLBACK;
+    const earliestVacantCheckInTime = EARLIEST_VACANT_CHECK_IN_TIME_FALLBACK; // Mantido fixo por enquanto
+    // const earliestVacantCheckInTime = selectedAcomodacao?.earliest_check_in_time ?? EARLIEST_VACANT_CHECK_IN_TIME_FALLBACK; // Se fosse configurável
 
     // Horário de check-in padrão (usado para defaultValues no formulário, ex: 14:00)
-    const standardCheckInTime = selectedAcomodacao?.default_check_in_time ?? STANDARD_CHECK_IN_TIME_FALLBACK;
+    const standardCheckInTime = STANDARD_CHECK_IN_TIME_FALLBACK; // Mantido fixo por enquanto
+    // const standardCheckInTime = selectedAcomodacao?.default_check_in_time ?? STANDARD_CHECK_IN_TIME_FALLBACK;
 
     // Horário de check-out padrão (usado para defaultValues no formulário)
-    const defaultCheckOutTime = selectedAcomodacao?.default_check_out_time ?? DEFAULT_CHECK_OUT_TIME_FALLBACK;
+    const defaultCheckOutTime = DEFAULT_CHECK_OUT_TIME_FALLBACK;
 
 
     // --- Price and Nights Calculation ---
+    const checkOutDate = form.watch("check_out_date");
     const numNights = checkInDate && checkOutDate ? differenceInDays(checkOutDate, checkInDate) : 0;
     const precoPorNoite = selectedAcomodacao?.preco || 0;
     const valorTotal = numNights > 0 ? numNights * precoPorNoite : 0;
@@ -183,20 +185,24 @@ export const useReservaLogic = (form: UseFormReturn<ReservaFormValues>) => {
 
 
     // 2. Calcula o horário de check-in mais cedo permitido no dia
-    const dynamicEarliestCheckInTime = latestCheckOutTime 
-        ? addVariableBuffer(latestCheckOutTime, cleaningBufferHours) 
-        : null;
-    
-    // Passo 3: Define o horário base, considerando a limpeza/vaga.
-    let earliestCheckInTime = dynamicEarliestCheckInTime 
-        ? dynamicEarliestCheckInTime 
-        : earliestVacantCheckInTime;
+    let earliestCheckInTime = earliestVacantCheckInTime; // Começa com 08:00 (vaga)
 
-    // 🚨 CORREÇÃO ESSENCIAL: Sobrescreve earliestCheckInTime com a hora atual se o checkInDate for hoje
+    if (latestCheckOutTime) {
+        // Se houver um check-out anterior, o horário mínimo é o check-out + buffer
+        const dynamicEarliestCheckInTime = addVariableBuffer(latestCheckOutTime, cleaningBufferHours);
+        
+        // Se o horário calculado for DEPOIS do horário de vaga (08:00), usamos o horário calculado.
+        // Isso garante que se o check-out for 11:00 + 1h buffer = 12:00, o check-in mínimo é 12:00 (e não 08:00).
+        if (isTimeAfter(dynamicEarliestCheckInTime, earliestCheckInTime)) {
+            earliestCheckInTime = dynamicEarliestCheckInTime;
+        }
+    }
+    
+    // 3. CORREÇÃO ESSENCIAL: Sobrescreve earliestCheckInTime com a hora atual se o checkInDate for hoje
     if (checkInDate && isSameDay(checkInDate, new Date())) {
         const nowPlusBufferTime = getNextHalfHourTime(new Date());
 
-        // Se o horário de check-in calculado (limpeza/vaga - ex: 14:00) for ANTES do próximo horário disponível (agora - ex: 22:00), 
+        // Se o horário de check-in calculado (vaga/limpeza) for ANTES do próximo horário disponível (agora), 
         // então o horário mínimo passa a ser o horário atual.
         if (isTimeBefore(earliestCheckInTime, nowPlusBufferTime)) {
             earliestCheckInTime = nowPlusBufferTime;
