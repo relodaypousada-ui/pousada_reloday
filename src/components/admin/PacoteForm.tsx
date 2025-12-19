@@ -72,6 +72,7 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
     }
   });
   
+  const currentImageUrl = form.watch('imagem_url'); // Observa a URL da imagem
   const uploadPath = useMemo(() => `pacotes/${pacoteId || 'temp'}`, [pacoteId]);
   const { uploadFile, isUploading } = useStorageUpload(uploadPath);
 
@@ -208,7 +209,7 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
                 <div className="flex space-x-2">
                     <Input placeholder="https://exemplo.com/pacote.jpg" {...field} className="flex-1" />
                     <label htmlFor="pacote-main-image-upload" className="cursor-pointer">
-                        <Button asChild variant="outline" disabled={isUploading}>
+                        <Button asChild variant="outline" disabled={isUploading} size="icon">
                             <div className="flex items-center">
                                 {isUploading ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -229,15 +230,25 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
                 </div>
               </FormControl>
               <FormDescription>
-                {field.value ? (
-                    <div className="flex items-center mt-2 text-xs text-green-600">
-                        <ImageIcon className="h-3 w-3 mr-1" /> Imagem atual: {field.value.substring(0, 50)}...
-                    </div>
-                ) : (
-                    "Insira uma URL ou faça upload de uma imagem principal para o pacote."
-                )}
+                Insira uma URL ou faça upload de uma imagem principal para o pacote.
               </FormDescription>
               <FormMessage />
+              
+              {/* Visualização da Imagem */}
+              {currentImageUrl && (
+                  <div className="mt-4 p-2 border rounded-lg bg-muted/50">
+                      <p className="text-sm font-medium mb-2 flex items-center">
+                          <ImageIcon className="h-4 w-4 mr-2 text-primary" /> Pré-visualização da Imagem Principal:
+                      </p>
+                      <div className="w-full h-40 overflow-hidden rounded-md">
+                          <img 
+                              src={currentImageUrl} 
+                              alt="Pré-visualização da imagem principal do pacote" 
+                              className="w-full h-full object-cover"
+                          />
+                      </div>
+                  </div>
+              )}
             </FormItem>
           )}
         />
