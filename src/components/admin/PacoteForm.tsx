@@ -222,7 +222,7 @@ const PacoteForm: React.FC<PacoteFormProps> = ({ initialData, onSuccess }) => {
                     <input
                         id="pacote-main-image-upload"
                         type="file"
-                        accept="image/webp, image/jpeg, image/png"
+                        accept="image/*"
                         className="hidden"
                         onChange={handleFileUpload}
                         disabled={isUploading}

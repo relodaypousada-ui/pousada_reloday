@@ -241,6 +241,8 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
               <FormControl>
                 <div className="flex space-x-2">
                     <Input placeholder="https://exemplo.com/imagem.jpg" {...field} className="flex-1" />
+                    
+                    {/* CORREÇÃO: O label agora envolve o botão e aponta para o input file */}
                     <label htmlFor="main-image-upload" className="cursor-pointer">
                         <Button type="button" variant="outline" disabled={isUploading} size="icon">
                             {isUploading ? (
@@ -253,7 +255,7 @@ const AcomodacaoForm: React.FC<AcomodacaoFormProps> = ({ initialData, onSuccess 
                     <input
                         id="main-image-upload"
                         type="file"
-                        accept="image/webp, image/jpeg, image/png"
+                        accept="image/*"
                         className="hidden"
                         onChange={handleFileUpload}
                         disabled={isUploading}

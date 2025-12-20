@@ -262,7 +262,7 @@ const PacoteMediaManager: React.FC<PacoteMediaManagerProps> = ({ pacoteId, initi
                         ) : (
                             <>
                                 <Upload className="h-4 w-4 mr-2" />
-                                Fazer Upload de {newType === 'image' ? 'Imagem (webp/jpg/png)' : 'Vídeo (mp4)'}
+                                Fazer Upload de {newType === 'image' ? 'Imagem' : 'Vídeo'}
                             </>
                         )}
                     </div>
@@ -270,10 +270,10 @@ const PacoteMediaManager: React.FC<PacoteMediaManagerProps> = ({ pacoteId, initi
                 <input
                     id="pacote-media-upload"
                     type="file"
-                    accept={newType === 'image' ? "image/webp, image/jpeg, image/png" : "video/mp4"}
+                    accept={newType === 'image' ? "image/*" : "video/*"}
                     className="hidden"
                     onChange={handleFileChange}
-                    disabled={isAddingPending}
+                    disabled={isUploading}
                 />
             </label>
           )}

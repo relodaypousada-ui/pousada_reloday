@@ -188,7 +188,7 @@ const SlideForm: React.FC<SlideFormProps> = ({ initialData, onSuccess }) => {
                     <input
                         id="slide-image-upload"
                         type="file"
-                        accept="image/webp, image/jpeg, image/png"
+                        accept="image/*"
                         className="hidden"
                         onChange={handleFileUpload}
                         disabled={isUploading}
