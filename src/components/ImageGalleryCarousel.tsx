@@ -71,7 +71,7 @@ const ImageGalleryCarousel: React.FC<ImageGalleryCarouselProps> = ({ images, tit
             onClick={handleNext}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white h-10 w-10 rounded-full"
           >
-            ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-6 w-6" />
           </Button>
         </>
       )}
