@@ -1,6 +1,6 @@
 # Pousada Reloday - Sistema de Reservas e Gestãoversão
 
-## versão teste (deploy)
+## versão teste (deploy1)
 
 ## Visão Geral
 Este é o frontend de um sistema de gestão e reservas para uma pousada, construído com React, TypeScript e Tailwind CSS. Ele utiliza o Supabase como backend completo (Autenticação, Banco de Dados, Storage e Edge Functions) para gerenciar acomodações, pacotes, reservas e configurações do site.
